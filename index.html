@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Theory Engine Studio V16</title>
+<style>
+:root{--bg:#020617;--p:#0f172a;--b:#1e293b;--t:#e2e8f0;--m:#94a3b8;--c:#22d3ee;--a:#fbbf24;--r:#f43f5e;--g:#34d399}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px system-ui,sans-serif;padding:12px}
+.w{max-width:1040px;margin:auto}header,.card,main{background:var(--p);border:1px solid var(--b);border-radius:14px;padding:14px;margin-bottom:12px}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+h1{margin:0;font-size:20px;color:var(--c)}h2{margin:0 0 4px}h3{margin:10px 0 6px;font-size:14px}p{margin:4px 0}
+nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:6px;margin-bottom:12px}
+button,label.btn{background:var(--b);color:var(--t);border:1px solid #334155;border-radius:8px;padding:7px 10px;cursor:pointer;font:inherit;display:inline-block}
+button:hover,label.btn:hover{border-color:var(--c)}button.on{background:#0e7490;border-color:var(--c)}
+button.go{background:var(--c);color:#020617;font-weight:700}button.step{height:30px;padding:0}
+.g button:nth-child(4n+1):not(.act){background:#334155}.step.act{background:var(--a);border-color:#fde68a}.step.cur{outline:2px solid #fff}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.m{color:var(--m);font-size:12px}
+.g{display:grid;gap:4px}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:6px}
+#toast{min-height:22px;margin-bottom:10px;font-weight:600}.ok{color:var(--g)}.bad{color:var(--r)}
+input[type=range]{accent-color:var(--c)}select,textarea{background:var(--b);color:var(--t);border:1px solid #334155;border-radius:8px;padding:6px}
+textarea{width:100%;min-height:90px}table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--b);padding:4px;text-align:left}
+.bar{height:8px;background:linear-gradient(90deg,#22d3ee,#fbbf24);border-radius:4px}pre{white-space:pre-wrap;font-size:11px;color:var(--m);max-height:420px;overflow:auto}
+.ref{max-height:520px;overflow:auto}.ref h3{color:var(--c)}.ref li{margin:3px 0}
+</style></head><body><div class="w">
+<header><div><h1>THEORY ENGINE STUDIO <span style="color:var(--a)">V16</span></h1><div class="m">Theory &rarr; Score &rarr; Song. Offline, zero dependencies, autosaved.</div></div>
+<div class="row"><span>Lv <b id="lv" style="color:var(--g)">1</b></span><span>XP <b id="xp" style="color:var(--a)">0</b></span><span>Streak <b id="st" style="color:var(--c)">0</b></span>
+<button id="ping">&#128266;</button><button id="sv">Save project</button><label class="btn">Load project<input type="file" id="imp" accept=".json" hidden></label></div></header>
+<div id="toast"></div><nav id="nav"></nav><main id="main"></main></div>
+<script>
+"use strict";
+const NNS_MAJOR_SYSTEM=[
+ {
+  "number": "1",
+  "roman": "I",
+  "name": "Tonic",
+  "semitoneOffset": 0,
+  "quality": "maj",
+  "role": "Tonal home base, maximal stability"
+ },
+ {
+  "number": "2m",
+  "roman": "ii",
+  "name": "Supertonic",
+  "semitoneOffset": 2,
+  "quality": "min",
+  "role": "Pre-dominant motion, leads into 5"
+ },
+ {
+  "number": "3m",
+  "roman": "iii",
+  "name": "Mediant",
+  "semitoneOffset": 4,
+  "quality": "min",
+  "role": "Tonic substitute, mellow emotional shift"
+ },
+ {
+  "number": "4",
+  "roman": "IV",
+  "name": "Subdominant",
+  "semitoneOffset": 5,
+  "quality": "maj",
+  "role": "Forward propulsion away from home"
+ },
+ {
+  "number": "5",
+  "roman": "V",
+  "name": "Dominant",
+  "semitoneOffset": 7,
+  "quality": "maj",
+  "role": "Maximum harmonic tension; pulls to 1"
+ },
+ {
+  "number": "6m",
+  "roman": "vi",
+  "name": "Submediant",
+  "semitoneOffset": 9,
+  "quality": "min",
+  "role": "Relative minor anchor, deep emotional weight"
+ },
+ {
+  "number": "7°",
+  "roman": "vii°",
+  "name": "Leading Tone",
+  "semitoneOffset": 11,
+  "quality": "dim",
+  "role": "Unstable tritone tension, points straight to 1"
+ }
+];
+const CADENCE_BANK=[
+ {
+  "id": "perfect_authentic",
+  "name": "Perfect Authentic Cadence (PAC)",
+  "formulaNNS": [
+   "5",
+   "1"
+  ],
+  "formulaRoman": [
+   "V",
+   "I"
+  ],
+  "category": "Authentic",
+  "description": "V to I with both chords in root position and the tonic scale degree in the soprano lead voice.",
+  "gravity": "Finality: 100% (The gold standard resolution)",
+  "chords": [
+   {
+    "nns": "5",
+    "semitones": [
+     7,
+     11,
+     14
+    ],
+    "duration": 0.8
+   },
+   {
+    "nns": "1",
+    "semitones": [
+     0,
+     4,
+     7,
+     12
+    ],
+    "duration": 1.6
+   }
+  ]
+ },
+ {
+  "id": "imperfect_authentic",
+  "name": "Imperfect Authentic Cadence (IAC)",
+  "formulaNNS": [
+   "5",
+   "1 (Inv)"
+  ],
+  "formulaRoman": [
+   "V",
+   "I6"
+  ],
+  "category": "Authentic",
+  "description": "V to I with an inverted chord or non-tonic top voice, creating closure without stopping momentum.",
+  "gravity": "Finality: 75% (Gentle closure while continuing motion)",
+  "chords": [
+   {
+    "nns": "5",
+    "semitones": [
+     7,
+     11,
+     14
+    ],
+    "duration": 0.8
+   },
+   {
+    "nns": "1 (Inv)",
+    "semitones": [
+     4,
+     7,
+     12,
+     16
+    ],
+    "duration": 1.5
+   }
+  ]
+ },
+ {
+  "id": "plagal_amen",
+  "name": "Classic Plagal Cadence ('Amen')",
+  "formulaNNS": [
+   "4",
+   "1"
+  ],
+  "formulaRoman": [
+   "IV",
+   "I"
+  ],
+  "category": "Plagal",
+  "description": "Subdominant moving directly to Tonic. Lacks the aggressive leading-tone pull of V, feeling sacred and serene.",
+  "gravity": "Finality: 80% (Spiritual, soothing, rooted)",
+  "chords": [
+   {
+    "nns": "4",
+    "semitones": [
+     5,
+     9,
+     12
+    ],
+    "duration": 0.8
+   },
+   {
+    "nns": "1",
+    "semitones": [
+     0,
+     4,
+     7,
+     12
+    ],
+    "duration": 1.6
+   }
+  ]
+ },
+ {
+  "id": "minor_plagal",
+  "name": "Minor Plagal Cadence (The Emo/Hollywood Tearjerker)",
+  "formulaNNS": [
+   "4",
+   "4m",
+   "1"
+  ],
+  "formulaRoman": [
+   "IV",
+   "iv",
+   "I"
+  ],
+  "category": "Plagal",
+  "description": "Major IV dips into minor iv (lowering 6th degree to flat-6) before resting on I.",
+  "gravity": "Finality: 90% (Cinematic heartbreak & emotional release)",
+  "chords": [
+   {
+    "nns": "4",
+    "semitones": [
+     5,
+     9,
+     12
+    ],
+    "duration": 0.7
+   },
+   {
+    "nns": "4m",
+    "semitones": [
+     5,
+     8,
+     12
+    ],
+    "duration": 0.8
+   },
+   {
+    "nns": "1",
+    "semitones": [
+     0,
+     4,
+     7,
+     12
+    ],
+    "duration": 1.6
+   }
+  ]
+ },
+ {
+  "id": "deceptive_classic",
+  "name": "Deceptive Cadence (V -> vi)",
+  "formulaNNS": [
+   "5",
+   "6m"
+  ],
+  "formulaRoman": [
+   "V",
+   "vi"
+  ],
+  "category": "Deceptive",
+  "description": "The dominant 5 primes the ear for the tonic 1, but twists into the relative minor 6m.",
+  "gravity": "Finality: 20% (Plot twist; prolongs the journey)",
+  "chords": [
+   {
+    "nns": "5",
+    "semitones": [
+     7,
+     11,
+     14
+    ],
+    "duration": 0.8
+   },
+   {
+    "nns": "6m",
+    "semitones": [
+     9,
+     12,
+     16
+    ],
+    "duration": 1.6
+   }
+  ]
+ },
+ {
+  "id": "deceptive_flat6",
+  "name": "Modal Deceptive Cadence (V -> bVI)",
+  "formulaNNS": [
+   "5",
+   "b6"
+  ],
+  "formulaRoman": [
+   "V",
+   "bVI"
+  ],
+  "category": "Deceptive",
+  "description": "Resolves to the chromatic flat-six (borrowed from parallel minor), common in epic film scoring.",
+  "gravity": "Finality: 15% (Monumental cinematic cliffhanger)",
+  "chords": [
+   {
+    "nns": "5",
+    "semitones": [
+     7,
+     11,
+     14
+    ],
+    "duration": 0.8
+   },
+   {
+    "nns": "b6",
+    "semitones": [
+     8,
+     12,
+     15
+    ],
+    "duration": 1.6
+   }
+  ]
+ },
+ {
+  "id": "half_cadence_standard",
+  "name": "Standard Half Cadence (I -> V)",
+  "formulaNNS": [
+   "1",
+   "5"
+  ],
+  "formulaRoman": [
+   "I",
+   "V"
+  ],
+  "category": "Half",
+  "description": "Stops on the dominant V like a musical comma or question mark. Demands an answering antecedent phrase.",
+  "gravity": "Finality: 0% (Tension unresolved, suspended in air)",
+  "chords": [
+   {
+    "nns": "1",
+    "semitones": [
+     0,
+     4,
+     7
+    ],
+    "duration": 0.8
+   },
+   {
+    "nns": "5",
+    "semitones": [
+     7,
+     11,
+     14
+    ],
+    "duration": 1.6
+   }
+  ]
+ },
+ {
+  "id": "phrygian_half",
+  "name": "Phrygian Half Cadence (iv6 -> V)",
+  "formulaNNS": [
+   "4m/b6",
+   "5"
+  ],
+  "formulaRoman": [
+   "iv6",
+   "V"
+  ],
+  "category": "Half",
+  "description": "Bass moves by half-step from b6 down to 5. Ancient baroque, flamenco, and trap dramatic tension.",
+  "gravity": "Finality: 10% (Dramatic, dark anticipation)",
+  "chords": [
+   {
+    "nns": "iv6",
+    "semitones": [
+     8,
+     12,
+     17
+    ],
+    "duration": 0.8
+   },
+   {
+    "nns": "5",
+    "semitones": [
+     7,
+     11,
+     14
+    ],
+    "duration": 1.6
+   }
+  ]
+ }
+];
+const FORM_TEMPLATES=[
+ {
+  "id": "pop_verse_chorus_bridge",
+  "title": "Radio Verse-Chorus-Bridge (AABA / ABABCB)",
+  "totalBars": 36,
+  "timeSig": "4/4",
+  "description": "The gold standard of popular songcraft. Maximizes dynamic contrast between narrative verses and explosive anthemic choruses.",
+  "sections": [
+   {
+    "name": "Intro",
+    "bars": 4,
+    "nnsProgression": [
+     "1",
+     "5",
+     "6m",
+     "4"
+    ],
+    "dynamics": "mp",
+    "intensity": 30,
+    "purpose": "Establish hook, groove, and key center"
+   },
+   {
+    "name": "Verse 1",
+    "bars": 8,
+    "nnsProgression": [
+     "1",
+     "6m",
+     "4",
+     "5"
+    ],
+    "dynamics": "mf",
+    "intensity": 45,
+    "purpose": "Exposition, lyrics, narrative intimacy"
+   },
+   {
+    "name": "Pre-Chorus",
+    "bars": 4,
+    "nnsProgression": [
+     "2m",
+     "4",
+     "6m",
+     "5"
+    ],
+    "dynamics": "f",
+    "intensity": 70,
+    "purpose": "Ramping tension, rising melodic climb"
+   },
+   {
+    "name": "Chorus 1",
+    "bars": 8,
+    "nnsProgression": [
+     "1",
+     "5",
+     "6m",
+     "4"
+    ],
+    "dynamics": "ff",
+    "intensity": 95,
+    "purpose": "The core payoff, widest stereo spread, vocal hook"
+   },
+   {
+    "name": "Verse 2",
+    "bars": 4,
+    "nnsProgression": [
+     "1",
+     "6m",
+     "4",
+     "5"
+    ],
+    "dynamics": "mf",
+    "intensity": 50,
+    "purpose": "Shortened story development with added percussion"
+   },
+   {
+    "name": "Bridge",
+    "bars": 4,
+    "nnsProgression": [
+     "4",
+     "5",
+     "3m",
+     "6m"
+    ],
+    "dynamics": "p -> ff",
+    "intensity": 80,
+    "purpose": "Harmonic departure, fresh chords, dramatic crescendo"
+   },
+   {
+    "name": "Final Chorus",
+    "bars": 8,
+    "nnsProgression": [
+     "1",
+     "5",
+     "6m",
+     "4"
+    ],
+    "dynamics": "fff",
+    "intensity": 100,
+    "purpose": "Maximum energy wall-of-sound resolution"
+   }
+  ]
+ },
+ {
+  "id": "standard_12_bar_blues",
+  "title": "Standard 12-Bar Blues Form (AAB Root Grid)",
+  "totalBars": 12,
+  "timeSig": "4/4",
+  "description": "The harmonic mother-tongue of blues, rock, and modern hip-hop 808 loops. Uses dominant seventh chords across 1, 4, and 5.",
+  "sections": [
+   {
+    "name": "Bars 1-4 (Tonic Statement)",
+    "bars": 4,
+    "nnsProgression": [
+     "1",
+     "1",
+     "1",
+     "1"
+    ],
+    "dynamics": "f",
+    "intensity": 60,
+    "purpose": "Statement of the 12-bar vocal line (A)"
+   },
+   {
+    "name": "Bars 5-6 (Subdominant Shift)",
+    "bars": 2,
+    "nnsProgression": [
+     "4",
+     "4"
+    ],
+    "dynamics": "f",
+    "intensity": 75,
+    "purpose": "Lifting into the IV chord (Question)"
+   },
+   {
+    "name": "Bars 7-8 (Return Home)",
+    "bars": 2,
+    "nnsProgression": [
+     "1",
+     "1"
+    ],
+    "dynamics": "f",
+    "intensity": 65,
+    "purpose": "Repeat of vocal theme (A)"
+   },
+   {
+    "name": "Bars 9-10 (Dominant Climax)",
+    "bars": 2,
+    "nnsProgression": [
+     "5",
+     "4"
+    ],
+    "dynamics": "ff",
+    "intensity": 90,
+    "purpose": "Rhyme payoff / punchline statement (B)"
+   },
+   {
+    "name": "Bars 11-12 (Turnaround)",
+    "bars": 2,
+    "nnsProgression": [
+     "1",
+     "5"
+    ],
+    "dynamics": "ff",
+    "intensity": 85,
+    "purpose": "Turnaround cadence cycling straight back to Bar 1"
+   }
+  ]
+ },
+ {
+  "id": "cinematic_ternary",
+  "title": "Cinematic Ternary (ABA Architectural Arch)",
+  "totalBars": 24,
+  "timeSig": "4/4",
+  "description": "Statement (A) -> Contrasting Development (B) -> Restatement with Variations (A). Used in film themes and orchestral movements.",
+  "sections": [
+   {
+    "name": "Section A (Main Theme)",
+    "bars": 8,
+    "nnsProgression": [
+     "1",
+     "3m",
+     "6m",
+     "4"
+    ],
+    "dynamics": "p",
+    "intensity": 40,
+    "purpose": "Principal melodic statement, intimate arrangement"
+   },
+   {
+    "name": "Section B (Development)",
+    "bars": 8,
+    "nnsProgression": [
+     "2m",
+     "5",
+     "2m",
+     "5"
+    ],
+    "dynamics": "f",
+    "intensity": 75,
+    "purpose": "Modulation, rising conflict, dynamic counterpoint"
+   },
+   {
+    "name": "Section A' (Grand Recap)",
+    "bars": 8,
+    "nnsProgression": [
+     "1",
+     "3m",
+     "6m",
+     "1"
+    ],
+    "dynamics": "ff",
+    "intensity": 95,
+    "purpose": "Full brass/percussion orchestration of theme with PAC"
+   }
+  ]
+ }
+];
+const VIRTUAL_INSTRUMENT_PRESETS=[
+ {
+  "id": "lead_analog_saw",
+  "name": "Jupiter-8 Unison Lead",
+  "category": "lead",
+  "waveform": "sawtooth",
+  "filterType": "lowpass",
+  "filterFreq": 3200,
+  "resonance": 3.5,
+  "attack": 0.02,
+  "decay": 0.15,
+  "sustain": 0.65,
+  "release": 0.25,
+  "harmonicDetune": 8,
+  "stereoSpread": 0.2
+ },
+ {
+  "id": "lead_glass_bell",
+  "name": "FM Glass Sine Flute",
+  "category": "lead",
+  "waveform": "sine",
+  "filterType": "bandpass",
+  "filterFreq": 2400,
+  "resonance": 1.2,
+  "attack": 0.01,
+  "decay": 0.3,
+  "sustain": 0.4,
+  "release": 0.4,
+  "harmonicDetune": 0,
+  "stereoSpread": 0
+ },
+ {
+  "id": "lead_square_pluck",
+  "name": "8-Bit Chiptune Pluck",
+  "category": "lead",
+  "waveform": "square",
+  "filterType": "lowpass",
+  "filterFreq": 4500,
+  "resonance": 1,
+  "attack": 0.005,
+  "decay": 0.08,
+  "sustain": 0.1,
+  "release": 0.1,
+  "harmonicDetune": 4,
+  "stereoSpread": 0.3
+ },
+ {
+  "id": "chords_warm_pad",
+  "name": "OB-Xa Lush Analog Pad",
+  "category": "chords",
+  "waveform": "sawtooth",
+  "filterType": "lowpass",
+  "filterFreq": 1400,
+  "resonance": 2,
+  "attack": 0.12,
+  "decay": 0.3,
+  "sustain": 0.7,
+  "release": 0.6,
+  "harmonicDetune": 6,
+  "stereoSpread": 0.5
+ },
+ {
+  "id": "chords_rhodes_epiano",
+  "name": "Suitcase Rhodes Mark I",
+  "category": "chords",
+  "waveform": "triangle",
+  "filterType": "lowpass",
+  "filterFreq": 2200,
+  "resonance": 1.5,
+  "attack": 0.02,
+  "decay": 0.25,
+  "sustain": 0.5,
+  "release": 0.35,
+  "harmonicDetune": 2,
+  "stereoSpread": 0.25
+ },
+ {
+  "id": "chords_grand_piano",
+  "name": "Steinway Grand Felt",
+  "category": "chords",
+  "waveform": "triangle",
+  "filterType": "lowpass",
+  "filterFreq": 3800,
+  "resonance": 0.8,
+  "attack": 0.01,
+  "decay": 0.4,
+  "sustain": 0.45,
+  "release": 0.5,
+  "harmonicDetune": 1,
+  "stereoSpread": 0.1
+ },
+ {
+  "id": "bass_moog_sub",
+  "name": "Minimoog Model D Sub",
+  "category": "bass",
+  "waveform": "sawtooth",
+  "filterType": "lowpass",
+  "filterFreq": 450,
+  "resonance": 4.5,
+  "attack": 0.02,
+  "decay": 0.2,
+  "sustain": 0.8,
+  "release": 0.25,
+  "harmonicDetune": 3,
+  "stereoSpread": 0
+ },
+ {
+  "id": "bass_808_sine",
+  "name": "Clean Memphis 808",
+  "category": "bass",
+  "waveform": "sine",
+  "filterType": "lowpass",
+  "filterFreq": 280,
+  "resonance": 1,
+  "attack": 0.005,
+  "decay": 0.35,
+  "sustain": 0.9,
+  "release": 0.3,
+  "harmonicDetune": 0,
+  "stereoSpread": 0
+ },
+ {
+  "id": "bass_acid_303",
+  "name": "TB-303 Acid Resonator",
+  "category": "bass",
+  "waveform": "sawtooth",
+  "filterType": "lowpass",
+  "filterFreq": 850,
+  "resonance": 8,
+  "attack": 0.01,
+  "decay": 0.12,
+  "sustain": 0.4,
+  "release": 0.15,
+  "harmonicDetune": 0,
+  "stereoSpread": 0
+ }
+];
+const SCALES={
+ "major": {
+  "formula": [
+   0,
+   2,
+   4,
+   5,
+   7,
+   9,
+   11,
+   12
+  ],
+  "name": "Ionian (Major)",
+  "pattern": "W-W-H-W-W-W-H"
+ },
+ "natural_minor": {
+  "formula": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   10,
+   12
+  ],
+  "name": "Aeolian (Natural Minor)",
+  "pattern": "W-H-W-W-H-W-W"
+ },
+ "harmonic_minor": {
+  "formula": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   8,
+   11,
+   12
+  ],
+  "name": "Harmonic Minor (Leading #7)",
+  "pattern": "W-H-W-W-H-1.5-H"
+ },
+ "melodic_minor": {
+  "formula": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   11,
+   12
+  ],
+  "name": "Melodic Minor (Ascending)",
+  "pattern": "W-H-W-W-W-W-H"
+ },
+ "dorian": {
+  "formula": [
+   0,
+   2,
+   3,
+   5,
+   7,
+   9,
+   10,
+   12
+  ],
+  "name": "Dorian Mode",
+  "pattern": "W-H-W-W-W-H-W"
+ },
+ "phrygian_dominant": {
+  "formula": [
+   0,
+   1,
+   4,
+   5,
+   7,
+   8,
+   10,
+   12
+  ],
+  "name": "Phrygian Dominant",
+  "pattern": "H-1.5-H-W-H-W-W"
+ }
+};
+const CHORD_LIBRARY={
+ "maj": {
+  "intervals": [
+   0,
+   4,
+   7
+  ],
+  "label": "Major Triad",
+  "mood": "Triumphant, Bright, Stable"
+ },
+ "min": {
+  "intervals": [
+   0,
+   3,
+   7
+  ],
+  "label": "Minor Triad",
+  "mood": "Dark, Melancholic, Serious"
+ },
+ "dim": {
+  "intervals": [
+   0,
+   3,
+   6
+  ],
+  "label": "Diminished Triad",
+  "mood": "Tense, Unstable, Suspenseful"
+ },
+ "aug": {
+  "intervals": [
+   0,
+   4,
+   8
+  ],
+  "label": "Augmented Triad",
+  "mood": "Ethereal, Dreamy, Floating"
+ },
+ "maj7": {
+  "intervals": [
+   0,
+   4,
+   7,
+   11
+  ],
+  "label": "Major 7th",
+  "mood": "Lush, Smooth, Nostalgic"
+ },
+ "min7": {
+  "intervals": [
+   0,
+   3,
+   7,
+   10
+  ],
+  "label": "Minor 7th",
+  "mood": "Soulful, Jazzy, Deep"
+ },
+ "dom7": {
+  "intervals": [
+   0,
+   4,
+   7,
+   10
+  ],
+  "label": "Dominant 7th",
+  "mood": "Bluesy, Pulling to Resolution"
+ },
+ "min7b5": {
+  "intervals": [
+   0,
+   3,
+   6,
+   10
+  ],
+  "label": "Half-Diminished 7th",
+  "mood": "Complex, Dramatic Noir"
+ }
+};
+const DEGREE_NAMES=[
+ "1. Tonic",
+ "2. Supertonic",
+ "3. Mediant",
+ "4. Subdominant",
+ "5. Dominant",
+ "6. Submediant",
+ "7. Leading Tone",
+ "8. Octave"
+];
+
+const REF=[
+"<h2>The Complete Music Theory Synthesis (*Gamified Music Theory*)</h2>",
+"<p>Music theory is not a rigid set of rules meant to restrict creativity; it is a standardized communicative language—a musical grammar—that explains how sound is "+
+"organized in time and pitch so you can read, anticipate, improvise, and compose with total precision.</p>",
+"<h3>1. Rhythm, Time, and Pulse (The Temporal Grid)</h3>",
+"<li><b>Rhythm &amp; Beat:</b> Rhythm is the pattern of regular or irregular pulses in time, while the beat is the underlying steady pulse. Without a discernible beat, "+
+"pitch and harmony lack structural grounding.</li>",
+"<li><b>Note &amp; Rest Values:</b> Duration is measured fractionally: <b>Whole (semibreve)</b>, <b>Half (minim)</b>, <b>Quarter (crotchet)</b>, <b>Eighth (quaver)</b>, and "+
+"smaller subdivisions. <b>Rests</b> represent active silence and must be counted just as strictly as played notes.</li>",
+"<li><b>Extending Durations:</b> A <b>dot</b> increases a note or rest's value by half of its original duration, while a <b>tie</b> merges the durations of two adjacent "+
+"notes of the same pitch.</li>",
+"<li><b>Time Signatures &amp; Measures:</b> Written at the start of the staff after the clef and key signature, time signatures organize beats into <b>measures (bars)</b>. "+
+"They divide into <b>simple time</b> (beats divide by two), <b>compound time</b> (beats divide by three), and <b>asymmetrical time</b> (irregular groupings).</li>",
+"<li><b>Syncopation &amp; Irregular Subdivisions:</b> Music gains groove and tension by accenting off-beats (<b>syncopation</b>), starting ahead of the downbeat with "+
+"<b>pick-up notes</b>, or altering beat subdivisions using <b>triplets</b> and <b>duplets</b>.</li>",
+"<h3>2. Pitch, Scales, and Key Architecture</h3>",
+"<li><b>The Staff &amp; Clefs:</b> Standard Western notation uses a five-line staff. <b>Treble clef</b> anchors higher registers, <b>bass clef</b> anchors lower registers, "+
+"<b>C clefs (alto/tenor)</b> anchor mid-range instruments, and the <b>grand staff</b> unites treble and bass around Middle C.</li>",
+"<li><b>Semitones &amp; Accidentals:</b> The Western chromatic system divides an octave into <b>12 equal semitones (half steps)</b>—each equal to $\\frac{1}{12}$ of an "+
+"octave—while a <b>whole step</b> equals 2 semitones ($\\frac{1}{6}$ of an octave). <b>Accidentals</b> (sharps, flats, naturals) alter pitch by half or whole steps.</li>",
+"<li><b>Scale Construction:</b> Scales are ordered sequences of pitches that define a tonal palette.</li>",
+"<li><b>Major Scale Formula:</b> Always follows the exact interval pattern <b>W – W – H – W – W – W – H</b> (Whole, Whole, Half, Whole, Whole, Whole, Half).</li>",
+"<li><b>Scale Degrees:</b> Each of the seven unique pitches in a scale holds a functional title: <b>1. Tonic</b> (home base), <b>2. Supertonic</b>, <b>3. Mediant</b>, <b>4. "+
+"Subdominant</b>, <b>5. Dominant</b>, <b>6. Submediant</b>, and <b>7. Leading Tone</b> (which pulls strongly back to the 8th note, the octave <b>Tonic</b>).</li>",
+"<li><b>Minor Scales:</b> Exist in three primary forms—<b>Natural</b>, <b>Harmonic</b>, and <b>Melodic</b>—offering darker harmonic and melodic colors.</li>",
+"<li><b>Key Signatures &amp; The Circle of Fifths:</b> Key signatures group sharps or flats at the start of the staff to establish the tonal center without cluttering "+
+"individual notes.</li>",
+"<li><b>Quick Key Identification:</b> No sharps/flats = C major / A minor; one flat = F major / D minor; multiple flats = the key is the second-to-last flat; sharps = go up "+
+"one half step from the final sharp.</li>",
+"<li><b>Relative vs. Parallel:</b> <b>Parallel scales</b> share the same starting tonic (e.g., C major and C minor). <b>Relative minors</b> share the exact same key "+
+"signature as their major counterpart and sit a minor third (3 semitones) below the major tonic.</li>",
+"<li><b>Transposition:</b> Moving a piece into a new key requires shifting every pitch by a uniform interval or mapping the original <b>scale degrees</b> onto the target "+
+"key.</li>",
+"<h3>3. Intervals, Harmony, and Chord Progressions</h3>",
+"<li><b>Intervals:</b> The exact distance between two pitches, defined by <b>quantity</b> (counting staff lines and spaces, e.g., 2nd, 3rd, 4th, 5th, octave) and "+
+"<b>quality</b> (Major, Minor, Perfect, Augmented, Diminished, determined by exact half-step count). Intervals exceeding an octave are <b>compound intervals</b>.</li>",
+"<li><b>Chord Building:</b> Chords are formed by stacking consecutive thirds.</li>",
+"<li><b>Triads (3 notes):</b> Built from a root, 3rd, and 5th—yielding <b>Major</b>, <b>Minor</b>, <b>Augmented</b>, and <b>Diminished</b> triads.</li>",
+"<li><b>Seventh &amp; Extended Chords:</b> Adding stacked thirds above the fifth creates <b>Seventh chords</b> (Major 7, Minor 7, Dominant 7, Minor 7$\\flat$5, Diminished 7) "+
+"and <b>Extended chords</b> (9ths, 11ths, 13ths).</li>",
+"<li><b>Voicing &amp; Inversion:</b> Reordering which chord tone sits in the bass creates <b>inversions</b>, while spacing notes across registers controls open vs. close "+
+"<b>voicing</b>.</li>",
+"<li><b>Chord Progressions &amp; Cadences:</b> Harmonic movement follows predictable gravity—most notably moving toward resolution via <b>cadences</b>:</li>",
+"<li><b>Authentic Cadence ($V \\rightarrow I$):</b> Strongest harmonic resolution.</li>",
+"<li><b>Plagal Cadence ($IV \\rightarrow I$):</b> The classic \"Amen\" resolution.</li>",
+"<li><b>Deceptive Cadence ($V \\rightarrow vi$):</b> Subverts expected resolution.</li>",
+"<li><b>Half-Cadence (ending on $V$):</b> Creates harmonic suspension.</li>",
+"<li><b>Modulation:</b> Shifting smoothly from one tonal center (key) to another mid-piece.</li>",
+"<h3>4. Expression, Acoustics, and Song Architecture</h3>",
+"<li><b>Tempo &amp; Dynamics:</b> Tempo dictates speed (ranging from *Grave* and *Largo* to *Andante*, *Moderato*, *Allegro*, and *Prestissimo*, refined by modifiers like "+
+"*poco*, *meno*, and *non troppo*). Dynamics control volume, while articulations (*staccato*, *pizzicato*, *spiccato*, *tremolo*, *vibrato*, pedal markings) dictate note "+
+"attack and envelope.</li>",
+"<li><b>Tone Color (Timbre) &amp; Acoustics:</b> Every sound is shaped by its <b>Attack</b>, <b>Timbre</b> (harmonic overtone body), and <b>Decay</b>. Human hearing "+
+"naturally prioritizes higher frequencies as urgent lead voices (\"talking instruments\"), which informs arrangement and orchestration.</li>",
+"<li><b>Musical Form vs. Genre:</b> <b>Genre</b> describes style and instrumentation, whereas <b>Form</b> is the structural blueprint of a piece:</li>",
+"<li><b>Foundational Forms:</b> <b>One-part ($A$)</b> (strophic/ballad), <b>Binary ($AB$ or $AABB$)</b> (statement/counterstatement), <b>Three-part/Ternary ($ABA$)</b> "+
+"(statement, contrasting bridge, return), and <b>Arch form ($ABCBA$)</b>.</li>",
+"<li><b>Classical &amp; Popular Frameworks:</b> Classical compositions rely on <b>counterpoint</b> (independent interwoven voices), <b>Sonata</b> (Exposition, Development, "+
+"Recapitulation), <b>Rondo</b>, and <b>Fugue</b>. Popular music relies on <b>12-bar blues</b> progressions ($I, IV, V$) and <b>Verse-Chorus-Bridge</b> layouts "+
+"($I-V-C-V-C-B-C$).</li>",
+"<h3>5. Score Literacy, Historical Roots, and Practical Application</h3>",
+"<li><b>Reading &amp; Score Formats:</b> Depending on the ensemble, music is read via <b>Lead Sheets</b> (melody + chord symbols), <b>Full/Study Scores</b> (all "+
+"instruments), <b>Vocal Scores</b>, <b>Tablature</b>, or <b>Figured Bass</b>. Tools like the <b>Nashville Number System</b> abstract chord progressions into scale-degree "+
+"numbers for instant on-the-fly transposition.</li>",
+"<li><b>Theoretical Lineage:</b> Modern Western theory evolved from <b>Pythagoras's</b> mathematical pitch ratios and Circle of Fifths, through <b>Guido d'Arezzo's</b> "+
+"early notation and solfège, <b>Gregorian Chant</b> and medieval polyphony, up to <b>Arnold Schoenberg's</b> 12-tone serialism and <b>Robert Moog's</b> electronic "+
+"synthesis.</li>",
+"<li><b>The Core Takeaway:</b> Mastering intervals, scales, rhythm, and form doesn't box in your improvisation or production—it gives you total command over tension, "+
+"resolution, and communication with other musicians.</li>",
+"<p>Also includes; - <b>Cadences as progression shapes</b> — authentic, plagal, deceptive, half.</p>",
+"<li><b>Nashville Number System</b> — your progressions are already scale-degree based, so this is a relabeling pass, not a rebuild. It makes the bank instantly "+
+"transposable in the language session players actually speak</li>",
+"<li><b>Form templates</b> — verse-chorus-bridge and 12-bar blues as MIDI structure maps, .</li>"
+],LOG=[
+"Here is the complete engineering change log documenting every architectural iteration",
+"from v0 to v12 for Theory Engine Studio.",
+"",
+"",
+"",
+"",
+"THEORY ENGINE",
+"STUDIO: MASTER",
+"CHANGE LOG (v0",
+"– v12)",
+"v0 → v1: Initialization & Core DSP Engine",
+"",
+"●​ Action: Initialized the Space container and created audioEngine.ts.",
+"",
+"●​ Architecture:",
+"○​ Implemented an inline Web Audio synthesis engine with an AudioContext",
+"",
+"singleton.",
+"○​ Added mathematical frequency calculation: $f = 440 \\times 2^{(m -",
+"69)/12}$.",
+"○​ Built ADSR envelope generators, multi-waveform oscillators, polyphonic",
+"chord playback with micro-arpeggiation, and procedural synthesized drum",
+"voices (Kick, Snare, Hi-Hat, Clap, Clave/Woodblock) using white-noise",
+"buffers and bandpass/high-pass filter ramps.",
+"",
+"",
+"",
+"",
+"v1 → v2: Interactive 5-Lesson Synthesis Lab",
+"",
+"●​ Action: Built out the foundational UI and games inside main.tsx covering",
+"",
+"Lessons 1 through 5.",
+"●​ Architecture:",
+"○​ Lesson 1 (Rhythm & Grid): Built a 16-step drum sequencer supporting",
+"standard and asymmetrical meters (4/4, 3/4, 5/4, 7/8), real-time BPM",
+"sliders, and a syncopated off-beat timing game.",
+"○​ Lesson 2 (Pitch & Scales): Added chromatic root selection across all 12",
+"semitones, interval formulas ($W\\text{--}W\\text{--}H$), full scale degree",
+"auditing (Tonic through Leading Tone), and the \"Functional Degree",
+"Hunter\" ear-training game.",
+"○​ Lesson 3 (Harmony & Chords):Implemented triads, 7th chords, chord",
+"inversions (Root, 1st, 2nd), and a blind cadence detection challenge.",
+"○​ Lesson 4 (Expression & Acoustics): Added real-time ADSR attack",
+"envelope shaping, low-pass filter cutoff control, and a dynamic song",
+"architecture timeline arranger.",
+"○​ Lesson 5 (Arrangement Lab): Integrated @flowmusic/sdk for",
+"",
+"prompt-driven song generation.",
+"",
+"",
+"",
+"",
+"v2 → v5: Theory Blueprint Expansion (Cadences, NNS, &",
+"MIDI Form Maps)",
+"",
+"●​ Action: Expanded the core music theory engine to align with professional studio",
+"and session-player standards.",
+"●​ *** Cadence Bank: Codified 8 distinct cadence progression shapes with explicit",
+"tension/gravity ratings and voice leading:",
+"○​ Perfect Authentic (PAC) ($V \\to I$, Root position, 100% finality).",
+"○​ Imperfect Authentic (IAC) ($V \\to I^6$, Inverted bass/soprano).",
+"○​ Classic Plagal ($IV \\to I$, \"Amen\" serenity).",
+"○​ Minor Plagal ($IV \\to iv \\to I$, emotional flat-6 release).",
+"○​ Deceptive Classic ($V \\to vi$, relative minor surprise).",
+"○​ Modal Deceptive ($V \\to \\flat VI$, cinematic cliffhanger).",
+"○​ Standard Half ($I \\to V$, open musical question).",
+"○​ Phrygian Half ($iv^6 \\to V$, half-step $\\flat 6 \\to 5$ tension).",
+"○​ Nashville Number System (NNS) Matrix:Mapped all diatonic scale degrees",
+"into NNS numbers ($1, 2m, 3m, 4, 5, 6m, 7^\\circ$), showing functional",
+"harmonic roles (Tonic Home, Pre-Dominant, Dominant, Relative Minor)",
+"with dynamic transposition across all 12 keys.",
+"○​ MIDI Form Templates: Implemented complete bar-by-bar arrangement",
+"blueprints:",
+"■​ Radio Verse-Chorus-Bridge (ABABCB)(36 bars with dynamic",
+"intensity tracking from $p$ to $fff$).",
+"■​ Standard 12-Bar Blues (12-bar $AAB$ grid with turnaround",
+"cadence logic).",
+"■​ Cinematic Ternary (ABA) (24-bar macro architectural arch).",
+"",
+"",
+"",
+"",
+"v5 → v8: Offline Decoupling & Binary Audio/MIDI Exporters",
+"",
+"●​ Action: Replaced the external generative SDK dependency in Lesson 5 with a",
+"local, deterministic, offline procedural generation engine, adding dual MIDI and",
+"WAV binary file compilers.",
+"●​ Architecture:",
+"○​ Decoupling: Removed external SDK calls and defined local data models",
+"(ProceduralNote, ProceduralTrack, ProceduralClip).",
+"",
+"○​ Algorithmic Composition (generateProceduralOpus): Created a 16-bar",
+"",
+"multi-track composer strictly conditioned on the user’s selected root, scale",
+"mode, tempo, and diatonic cadence cycles across three discrete stems",
+"(Bass, Chords, Lead).",
+"○​ Standard MIDI File 1.0 Encoder (exportProceduralToMidi): Built a",
+"",
+"byte-level SMF 1.0 binary compiler in pure TypeScript (MThd/MTrk",
+"chunks, delta-ticks, variable-length quantities, $480$ PPQ,",
+"note-on/note-off velocities) enabling drag-and-drop DAW export.",
+"○​ 16-Bit Stereo PCM WAV Encoder (exportProceduralToWav): Utilized",
+"",
+"OfflineAudioContext at 44.1 kHz to render the arrangement and",
+"",
+"package it into a compliant 44-byte RIFF/WAVE header binary for",
+"download.",
+"○​ Dual Export UI: Provided instant \"Export MIDI\" and \"Export WAV\" actions",
+"alongside in-browser playback controls.",
+"",
+"",
+"",
+"",
+"v8 → v11: Lesson 6 — Virtual Instrument Rig & Legitimate",
+"Cover Engine",
+"",
+"●​ Action: Created Lesson 6 to restore the Google Flow Music SDK as a true",
+"score-conditioned cover engine driven by user-selected virtual instruments.",
+"●​ Architecture:",
+"○​ Virtual Instrument Rack: Built 9 physical DSP instrument presets across 3",
+"stems:",
+"■​ Lead Voices: Jupiter-8 Unison Lead, FM Glass Sine Flute, 8-Bit",
+"Chiptune Pluck.",
+"■​ Chords & Harmony: OB-Xa Lush Analog Pad, Suitcase Rhodes",
+"Mark I, Steinway Grand Felt.",
+"■​ Bass Foundation: Minimoog Model D Sub, Clean Memphis 808,",
+"TB-303 Acid Resonator.",
+"○​ Score-to-Synth Playback: Engineered playWithVirtualInstruments to",
+"",
+"route the exact timestamps, durations, and velocities from the Lesson 5",
+"MIDI score directly into the selected virtual instruments.",
+"○​ Generative Cover Bridge: Linked the exact score metadata and selected",
+"instrument timbres into @flowmusic/sdk (generateSong) to produce an",
+"",
+"authentic, legitimate AI master cover.",
+"",
+"",
+"",
+"",
+"v11 → v12: Score-to-Song Refactoring & Dual Prompt",
+"Conditioning",
+"",
+"●​ Action: Eliminated unnecessary text prompting in Lesson 5 to enforce a strict",
+"\"Score-to-Song\" paradigm, and separated score parameters from genre inputs in",
+"Lesson 6.",
+"●​ Why it was clarified:",
+"○​ In a true music theory engine, the underlying score is generated",
+"mathematically from interval formulas, root selection, and cadence",
+"rules—not from a text prompt. Having a text box in Lesson 5 broke the",
+"architectural logic.",
+"●​ Architecture:",
+"○​ Lesson 5 Refactor: Completely removed the prompt input. Replaced it with",
+"a real-time Active Score Telemetry Badge displaying the locked musical",
+"properties (Tonic, Scale, Tempo/Meter, Cadence Cycle). The 16-bar score",
+"is generated strictly from music theory math.",
+"○​ Lesson 6 Dual-Conditioning Architecture:",
+"1.​ Box 1 (Auto-Derived & Locked):Automatically extracts and displays",
+"the exact score blueprint (Key, Scale, Tempo, Bars, and selected",
+"Virtual Instrument names). Non-editable by design to preserve",
+"score integrity.",
+"2.​ Box 2 (User Input): A dedicated styling field where the user",
+"specifies only the production aesthetic, genre, and acoustic",
+"environment (e.g., \"Industrial cyberpunk metal, heavy 808s\").",
+"○​ Result: The generative AI model is conditioned directly on the",
+"mathematical score while re-rendering it in the user's chosen genre.",
+"",
+"",
+"",
+"Theory Engine Studio",
+"v13 - Add explicit Mutate Arrangement button to Lesson 5 and clarify pure GUI scoring",
+"model",
+"Everything is locked into that clean architectural principle:",
+"",
+"1.​ Lesson 5 — Pure Offline GUI Scoring & Mutation Engine:",
+"○​ Zero text prompts.",
+"○​ The arrangement is compiled strictly from the GUI selections across",
+"Lessons 1–4 (Tonic, Scale Formula, Tempo/Meter, Cadence Cycle).",
+"○​ Added a dedicated \"Mutate MIDI Variations\"action: clicking it applies a",
+"fresh stochastic mutation across melodic subdivisions, passing tones, and",
+"note velocities while remaining mathematically locked to your active scale",
+"and cadences.",
+"○​ Immediate offline playback with dual Export MIDI and Export WAV buttons.",
+"2.​ Lesson 6 — True Score-Conditioned Cover Studio:",
+"○​ The only place with a prompt input, dedicated strictly to Genre, Texture, &",
+"Style (e.g., \"Industrial cyberpunk metal, heavy 808s\").",
+"○​ The score blueprint (key, scale, tempo, bars, and your selected virtual",
+"instrument timbres) is auto-derived and locked into a non-editable card.",
+"○​ The AI generation produces a legitimate cover of the exact score without",
+"altering the arrangement unless you choose to mutate the MIDI back in",
+"Lesson 5.",
+"",
+"",
+"",
+"Theory Engine Studio",
+"v14 - Make MIDI compilation 100% deterministic to user GUI scoring, with mutation",
+"purely optional via a separate button",
+"That distinction is critical. The primary compilation path is now 100% deterministic to the",
+"",
+"user's GUI choices, and mutation is strictly optional:",
+"",
+"",
+"",
+"1.​ Default Action: \"Compile Exact Score from GUI Rules\":",
+"○​ Executes with zero randomness.",
+"○​ Every single note, degree, chord voicing, and cadential step ($1 \\to 4 \\to 5",
+"\\to 1 \\to 6m \\to 4 \\to 5 \\to 1$) reflects the exact root, scale formula, tempo,",
+"and meter dialed in across Lessons 1–4.",
+"○​ Users are never robbed of the scoring choices they made.",
+"2.​ Optional Action: \"MIDI Variations\": labeled secondary button.",
+"○​ Applies controlled stochastic passing tones and rhythmic mutations only if",
+"the user deliberately clicks it.",
+"3.​ Lesson 6 AI Cover Studio:",
+"○​ Passes the exact deterministic score as a non-editable ground truth to the",
+"generative model, with the user's prompt modifying only the cover genre,",
+"acoustic space, and production texture.",
+"Theory Engine",
+"Studio: Complete",
+"Architectural &",
+"Functional",
+"Summary",
+"Theory Engine Studio is a browser-based, interactive music theory and scoring",
+"laboratory. It bridges pure acoustic mathematics, gamified ear-training, deterministic",
+"multi-track MIDI compilation, and generative AI covers. Instead of treating music",
+"creation as a prompt-to-song \"black box,\" the app follows a \"Theory-to-Score-to-Song\"",
+"pipeline: you dial in mathematical constraints across 6 interactive stages, synthesize",
+"and audit the arrangement offline in real time, export raw DAW-ready assets, and",
+"optionally render a conditioned AI master cover.",
+"",
+"",
+"",
+"High-Level Architecture & Tech Stack",
+"┌────────────────────────────────────────────────────────────────────",
+"────┐",
+"│             THEORY ENGINE STUDIO (v14)                        │",
+"├─────────────────────────┬──────────────────────────────┬───────────",
+"────┤",
+"│   STAGES 1 – 4         │        STAGE 5         │   STAGE 6   │",
+"│ Interactive Theory & │ Offline Score Compilation │ Virtual Rig │",
+"│    Ear Training   │        & Binary Exporters   │ & AI Covers │",
+"├─────────────────────────┼──────────────────────────────┼───────────",
+"────┤",
+"│ • 16-Step Drum Grid    │ • 100% Deterministic Score │ • 9 Physical │",
+"│ • Scale Math (W-W-H)       │ • Optional Stochastic Mutate │ DSP Synths │",
+"│ • Cadences & NNS Matrix │ • SMF Type 1.0 MIDI Writer │ • SDK Master │",
+"│ • ADSR & Form Blueprints│ • 16-Bit Stereo PCM WAV        │ Cover Engine│",
+"└─────────────────────────┴──────────────────────────────┴───────────",
+"────┘",
+"",
+"",
+"",
+"",
+"●​ Frontend: React + TypeScript + Tailwind CSS inside a sandboxed iframe.",
+"●​ Audio Engine (audioEngine.ts): 100% native Web Audio API (AudioContext,",
+"",
+"OscillatorNode, BiquadFilterNode, GainNode, OfflineAudioContext). Zero",
+"",
+"external audio samples; all kicks, snares, hats, keys, and pads are synthesized in",
+"code.",
+"●​ Binary Compilers: Custom in-browser encoders for Standard MIDI Files (.mid)",
+"and PCM WAV (.wav).",
+"●​ AI Model Bridge: @flowmusic/sdk(generateSong) for score-conditioned AI",
+"",
+"master covers.",
+"",
+"",
+"",
+"",
+"Detailed Breakdown of Each Stage",
+"",
+"Lesson 1: Rhythm, Time & Pulse (The Temporal Grid)",
+"",
+"●​ What it does: Provides an interactive 16-step rhythmic sequencer supporting",
+"standard and asymmetrical time signatures ($4/4$, $3/4$, $5/4$, $7/8$),",
+"continuous BPM modulation ($60\\text{--}180$), and a groove ear-training",
+"mini-game.",
+"●​ **Why it doesRhythm is the temporal grid of music. Without a steady pulse and",
+"clear subdivisions, pitch and harmonic gravity have no structural grounding.",
+"●​ How it works:",
+"○​ Synthesized Drums:",
+"■​ Kick: Sine wave pitching downward rapidly ($140\\text{ Hz} \\to",
+"38\\text{ Hz}$) over $150\\text{ ms}$ with an exponential volume",
+"ramp.",
+"■​ Snare: White noise buffer passed through a high-pass filter",
+"($800\\text{ Hz}$) layered over a short body sine drop ($185\\text{",
+"Hz} \\to 70\\text{ Hz}$).",
+"■​ Hi-Hat: Band-limited noise burst ($7\\text{ kHz}$) with a $40\\text{",
+"ms}$ decay tail.",
+"■​ Clave / Woodblock: Resonant sine burst at $880\\text{ Hz}$.",
+"○​ Timing Engine: Schedules steps using window.setTimeout calculated as",
+"",
+"$\\frac{60000}{\\text{BPM} \\times 4}\\text{ ms}$, ensuring sample-accurate",
+"triggers.",
+"○​ Syncopation Game: Challenges users to land hits strictly on the off-beat",
+"(\"&\"), awarding XP and tracking streaks.",
+"",
+"",
+"",
+"",
+"Lesson 2: Pitch, Scales & Key Architecture",
+"",
+"●​ What it does: Allows chromatic root selection across all 12 semitones ($C$",
+"through $B$), provides interval formulas for major, natural minor, harmonic minor,",
+"melodic minor, Dorian, and Phrygian dominant, and calculates scale degrees",
+"(Tonic to Leading Tone).",
+"●​ Why it does it: Establishes the tonal palette from pure interval math",
+"($W\\text{--}W\\text{--}H$) rather than static presets, letting users see and hear",
+"how altering a single semitone transforms emotional color.",
+"●​ How it works:",
+"○​ Frequency Calculation: Calculates frequencies via equal temperament",
+"math: $$f = 440 \\times 2^{\\frac{m - 69}{12}}$$",
+"○​ Diatonic Mapping: Maps selected root and scale formulas to dynamic",
+"arrays of MIDI note numbers ($60 + \\text{root} + \\text{offset}$).",
+"○​ Auditioning: Fires sequential arpeggiated tones with triangular oscillators.",
+"○​ **Degree HunterPrompts the user with a functional scale degree title (e.g.,",
+"\"Dominant\" or \"Leading Tone\") and requires them to identify the correct",
+"degree number.",
+"Lesson 3: Intervals, Harmony & Cadences",
+"",
+"●​ **What itConstructs stacked-third triads (Major, Minor, Diminished, Augmented)",
+"and seventh chords (Maj7, Min7, Dom7, Min7$\\flat$5) across multiple inversions",
+"(Root, 1st, 2nd). Houses an 8-cadence bank with tension ratings and a blind",
+"cadence ear-training game.",
+"●​ Why it does it: Explains harmonic gravity—how chords build tension and find",
+"resolution.",
+"●​ How it works:",
+"○​ Polyphonic Chord Voicing: Multi-oscillator routing with dynamic gain",
+"staging: $$\\text{Gain Per Voice} = \\frac{0.28}{\\sqrt{N}}$$",
+"○​ Cadence Progression Bank:",
+"■​ Perfect Authentic Cadence (PAC) ($V \\to I$, 100% resolution).",
+"■​ Imperfect Authentic Cadence (IAC) ($V \\to I^6$, inverted voice",
+"leading).",
+"■​ Classic Plagal Cadence ($IV \\to I$, \"Amen\" serenity).",
+"■​ Minor Plagal Cadence ($IV \\to iv \\to I$, emotional $\\flat 6$ pull).",
+"■​ Deceptive Cadence ($V \\to vi$, subverted expectation).",
+"■​ Modal Deceptive Cadence ($V \\to \\flat VI$, cinematic twist).",
+"■​ Standard Half Cadence ($I \\to V$, open musical question).",
+"■​ Phrygian Half Cadence ($iv^6 \\to V$, $\\flat 6 \\to 5$ bass step).",
+"○​ Blind Cadence Detective Game: Auditions a secret harmonic progression",
+"and asks the user to identify the resolution type by ear.",
+"Lesson 4: Expression, Acoustics & Form Blueprints",
+"",
+"●​ What it does: Features a real-time ADSR attack envelope and low-pass filter",
+"frequency shaper, paired with structural MIDI arrangement templates",
+"(Verse-Chorus-Bridge, 12-Bar Blues, Cinematic Ternary).",
+"●​ Why it does it: Teaches that timbre is determined by harmonic overtones and",
+"attack speed, while form provides the macro architectural layout of a track.",
+"●​ How it works:",
+"○​ Acoustic Sculptor: Routes an oscillator through a BiquadFilterNode",
+"",
+"(lowpass, $200\\text{--}8000\\text{ Hz}$) into an exponential GainNode",
+"",
+"envelope follower.",
+"○​ MIDI Form Templates:",
+"■​ Radio Verse-Chorus-Bridge (ABABCB):36 bars tracking dynamic",
+"curves ($p \\to fff$) and structural intensity per section.",
+"■​ 12-Bar Blues (AAB Grid): 12-bar layout with dominant $I^7, IV^7,",
+"V^7$ turnaround cadences.",
+"■​ Cinematic Ternary (ABA): 24-bar macro structure mapping",
+"exposition, development, and grand recapitulation.",
+"",
+"",
+"",
+"",
+"Lesson 5: Pure Offline Scoring & Multi-Format Exporters",
+"",
+"●​ What it does: Acts as a 100% offline mathematical composition engine. Compiles",
+"a 16-bar multi-track arrangement (Bass, Chords, Lead) with an optional mutation",
+"toggle, live Web Audio playback, and instant binary downloads as Standard MIDI",
+"File 1.0 (.mid) or 16-bit 44.1kHz PCM WAV (.wav).",
+"●​ Why it does it: Replaces prompt-based guessing with deterministic scoring.",
+"Users retain full creative ownership of their theoretical choices, with the freedom",
+"to drop the exported files straight into external DAWs.",
+"●​ How it works:",
+"○​ Deterministic Scoring (Default): Generates notes mathematically:",
+"■​ Bass: Root notes shifted down two octaves ($-24$ semitones)",
+"locked to the cadential degree cycle ($1 \\to 4 \\to 5 \\to 1 \\to 6m \\to 4",
+"\\to 5 \\to 1$).",
+"■​ Chords: Diatonic stacked triads ($[0, +2, +4]$ scale degrees)",
+"voiced in mid-octave registers.",
+"■​ Lead: Deterministic motif following active scale degrees.",
+"○​ Optional Stochastic Mutation: When explicitly clicked, applies controlled",
+"passing tones and rhythmic subdivisions constrained strictly within the",
+"active scale pool.",
+"○​ SMF 1.0 MIDI Writer (exportProceduralToMidi): Custom byte-level",
+"",
+"binary encoder that constructs MThd and MTrk chunks, variable-length",
+"",
+"delta ticks ($480$ PPQ), microsecond tempo meta events, and",
+"note-on/note-off velocity bytes into an application/x-midi Blob.",
+"",
+"○​ PCM WAV Exporter (exportProceduralToWav): Uses",
+"",
+"OfflineAudioContext at $44.1\\text{ kHz}$ to render audio in memory,",
+"",
+"builds a 44-byte RIFF/WAVE header, converts float samples to 16-bit",
+"signed integers, and exports an audio/wav Blob.",
+"Lesson 6: Virtual Instrument Rig & Legitimate AI Cover Studio",
+"",
+"●​ What it does: Routes the exact Lesson 5 MIDI score into 9 physical virtual",
+"instrument presets (Lead, Chords, Bass) for local live playback. It then conditions",
+"the Google Flow Music generative model to produce an authentic master AI",
+"cover in any user-defined genre.",
+"●​ Why it does it: Solves the \"fake cover\" problem. Generative audio often",
+"hallucinates melodies when relying solely on text prompts. Here, the AI is",
+"conditioned on the explicit score blueprint as ground truth, re-rendering it inside",
+"the desired production aesthetic.",
+"●​ How it works:",
+"○​ SoundFont-Grade DSP Rig:",
+"■​ Leads: Jupiter-8 Unison Saw (detuned saws with $3.5\\text{ Q}$",
+"filter), FM Glass Sine Flute (bandpass bell), 8-Bit Chiptune Pluck.",
+"■​ Chords: OB-Xa Lush Analog Pad, Suitcase Rhodes Mark I,",
+"Steinway Grand Felt.",
+"■​ Bass: Minimoog Model D Sub ($450\\text{ Hz}$ resonant saw),",
+"Clean Memphis 808, TB-303 Acid Resonator ($8.0\\text{ Q}$ filter",
+"sweep).",
+"○​ Score-to-Synth Playback:playWithVirtualInstruments iterates through",
+"",
+"the Lesson 5 ProceduralTrack note matrices, applying real-time filter",
+"",
+"cutoffs, resonance, and ADSR curves.",
+"○​ Dual-Prompt Generative Conditioning:",
+"■​ Box 1 (Locked Score Blueprint):Automatically compiles key, scale,",
+"tempo, bar count, and selected virtual instrument names into a",
+"non-editable conditioning card.",
+"■​ Box 2 (User Input): Accepts user input for genre, texture, and",
+"acoustic environment (e.g., \"Industrial cyberpunk metal, heavy",
+"808s\").",
+"○​ SDK Generation: Calls generateSong with the combined prompt, returning",
+"",
+"a playable streaming track with custom cover art that preserves the",
+"underlying score.",
+"",
+"",
+"",
+"",
+"Building an open-source, theory-conditioned DAW MVP with extensible plugin",
+"architecture is the ultimate endgame for this toolkit. Here is the exact architectural",
+"roadmap for how we bridge the current Theory Engine Studio into a modular,",
+"plugin-ready DAW:",
+"",
+"",
+"",
+"",
+"Phase 1: Bring-Your-Own-Instrument (SoundFont2 / SFZ /",
+"Sample-Map Loader)",
+"",
+"",
+"Currently, our virtual instruments use mathematical Web Audio oscillators and filters",
+"(audioEngine.ts). To let users load their own multi-sampled acoustic instruments without",
+"external servers:",
+"",
+"",
+"",
+"●​ SFZ / DecentSampler Web Parser: Support a drag-and-drop zone for .sfz text",
+"",
+"definitions paired with local .wav sample audio buffers, loaded directly into an",
+"",
+"AudioBufferSourceNodepool.",
+"●​ **SoundFont2 (.sf2) BinaryA lightweight, pure TypeScript parser that unpacks",
+"SoundFont chunks in the browser, mapping key-zones, velocities, and sample",
+"loop-points to our internal MIDI note-on/note-off event bus.",
+"",
+"",
+"",
+"",
+"Phase 2: Web Audio VST/AU Plugin Rack (The Insert FX",
+"Chain)",
+"",
+"",
+"Just like a desktop DAW (Ableton, FL Studio, Reaper), every track stem needs an Insert",
+"FX Chain:",
+"",
+"",
+"",
+"Modular AudioNode Interface: Define a standard plugin contract:​",
+"interface StudioPlugin {",
+"",
+"",
+"",
+"id: string;",
+"",
+"",
+"",
+"name: string;",
+"",
+"",
+"",
+"inputNode: AudioNode;",
+"",
+"",
+"",
+"params: Record<string, { value: number; min: number; max: number; label: string }>;",
+"",
+"",
+"",
+"process?: (ctx: AudioContext) => void;",
+"}",
+"",
+"",
+"",
+"",
+"●​",
+"●​ Built-in Insert Essentials:",
+"○​ Surgical Dynamic EQ: High/low crossovers, parametric mid cuts (e.g.",
+"carving the 300 Hz mud cut or 2.5 kHz vocal pocket).",
+"○​ Distortion / Tape Saturator: Wave-shaper curves (WaveShaperNode) for",
+"",
+"mid-grit harmonics.",
+"○​ Haas Stereo Spatializer: Delay nodes ($10\\text{--}15\\text{ ms}$) split hard",
+"Left/Right for three-dimensional widening.",
+"○​ Glue Bus Compressor / Brickwall Limiter:Dynamic range control before",
+"master summing.",
+"",
+"",
+"",
+"",
+"Phase 3: WebAssembly (Wasm) & Web AudioWorklet Host",
+"",
+"",
+"To let developers bring existing C++ / JUCE audio algorithms directly into the browser:",
+"",
+"",
+"",
+"●​ AudioWorklet DSP Pipeline: Move processing off the main UI thread into",
+"dedicated audio rendering threads (audioWorklet.addModule()).",
+"",
+"●​ Wasm DSP Wrapper: Compile C++/Rust DSP algorithms (like classic analog",
+"ladder filters, soft clippers, and tube models) into .wasm modules that drop",
+"",
+"straight into the instrument/effects slot.",
+"Phase 4: Full Multi-Track Arrangement Timeline & Piano Roll",
+"",
+"",
+"Elevating Lesson 5 into an interactive DAW workspace:",
+"",
+"",
+"",
+"●​ Canvas Piano Roll Editor: Interactive grid allowing users to visually click, drag,",
+"stretch, and quantize notes on top of the mathematical procedural baseline.",
+"●​ **AutomationDraw parameter envelopes over time (filter sweeps, volume fades,",
+"pan modulation). it from a walled-garden toy into an enduring production",
+"standard: artists own their scores, own their timbres, and control their generative",
+"conditioning.",
+"",
+"",
+"",
+"When you're ready to write the next module—whether that's the SFZ sample loader, the",
+"insert FX chain, or the piano roll editor—say the word and we'll start laying down the",
+"",
+"THEORY ENGINE STUDIO V15 (this release)",
+"- Ported exact v14 data (instrument presets, cadence bank, NNS matrix, forms, scales, chords) into a zero-dependency vanilla app (no React, lucide, Tailwind or SDK).",
+"- Autosave (localStorage) plus portable project JSON export/import; XP, streaks and stats persist.",
+"- Score modes: Classic v14 (exact), Mutate, and Form-driven (compiles Verse-Chorus-Bridge, 12-Bar Blues, Ternary).",
+"- Drum stem from the Lesson 1 grid; 4-track SMF (drums on channel 10); stereo WAV export.",
+"- Interactive piano roll with undo/redo; stem mixer (vol/pan/mute/solo); FX rack (drive, EQ, lowpass, compressor, delay, reverb, Haas width); sample-instrument loader.",
+"- AI cover (@flowmusic/sdk) replaced by offline style presets; v14 default cover prompt kept as the Cinematic Orchestra preset name.",
+"THEORY ENGINE STUDIO V16 (this release)",
+"- Publication release: the Claude.ai-verified V15 build ships as a standalone public GitHub repository with GitHub Pages, so anyone can run it from a URL with no install.",
+"- Why: V15 existed only as local files and a PDF print copy; V16 gives the app a permanent public home without touching the verified theory engine, compiler, or exporters.",
+"- Version identifiers bumped to V16 (title, header, autosave key tes16, export filenames theory-engine-v16.mid / .wav, project state v:16). No functional code changes from V15."
+];
+const $=s=>document.querySelector(s),PN=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const BASIC=[["lead","triangle"],["chords","sawtooth"],["bass","sine"]].map(([c,w])=>({id:"basic_"+c,name:"Basic oscillator ("+c+", v14 Lesson 5 voice)",category:c,waveform:w,
+ filterType:"lowpass",filterFreq:20000,resonance:0,attack:.03,decay:.1,sustain:1,release:.05,harmonicDetune:0,stereoSpread:0}));
+const PRESETS=[...VIRTUAL_INSTRUMENT_PRESETS,...BASIC],P=Object.fromEntries(PRESETS.map(p=>[p.id,p])),STEMS=["lead","chords","bass","drums"];
+let SAMP=null;const spec=id=>id=="sample"&&SAMP?SAMP:P[id]||PRESETS[0];
+const CLEAN={lp:20000,drive:0,delay:0,rev:0,comp:0,width:0,lo:0,hi:0,bm:1};
+const STY={"Clean (no FX)":CLEAN,"Cinematic Orchestra":{...CLEAN,lp:9000,delay:.2,rev:.6,comp:.3,width:.5,hi:2},
+ "Industrial Cyberpunk Metal":{...CLEAN,lp:7000,drive:.9,delay:.1,comp:.7,lo:3,bm:1.1},"Lo-fi Chill":{...CLEAN,lp:2500,drive:.1,delay:.3,rev:.2,hi:-4,bm:.85},
+ "Wide Synthwave":{...CLEAN,lp:12000,delay:.35,rev:.3,comp:.4,width:.9,lo:2,hi:3}};
+const DRN={kick:36,snare:38,hat:42,clave:75},DRT={36:"kick",38:"snare",42:"hat",75:"clave"};
+const KEYS=["v","root","scale","bpm","meter","tab","xp","streak","best","grid","mode","form","ct","inst","mix","fx","sty","score","notes","drums","stats"];
+const DEF=()=>({v:16,root:0,scale:"major",bpm:110,meter:4,tab:0,xp:0,streak:0,best:0,grid:null,mode:"classic",form:0,ct:"maj7",drums:false,notes:"",
+ inst:{lead:"lead_analog_saw",chords:"chords_warm_pad",bass:"bass_moog_sub"},sty:"Clean (no FX)",score:null,stats:{rhythm:0,degree:0,cadence:0,renders:0},
+ mix:{lead:{v:1,m:0,s:0,p:0},chords:{v:1,m:0,s:0,p:0},bass:{v:1,m:0,s:0,p:0},drums:{v:.8,m:0,s:0,p:0}},fx:{...CLEAN}});
+const S=Object.assign(DEF(),{seq:false,step:0,qd:4,qc:"Authentic",tim:"sawtooth",cut:2000,att:.05,ed:"lead",hist:[],redo:[]});
+try{const o=JSON.parse(localStorage.getItem("tes16")||"null");if(o)KEYS.forEach(k=>{if(o[k]!==undefined)S[k]=o[k]})}catch(e){}
+const DR0=[[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],Array(16).fill(1),[0,0,1,0,0,0,1,0,0,0,1,0,0,1,0,0]];
+const steps=()=>S.meter==7?14:S.meter*4,bpbOf=()=>S.meter==7?3.5:S.meter;
+function resize(){const n=steps();S.grid=(S.grid||DR0).map(r=>Array.from({length:n},(_,i)=>!!r[i]))}resize();
+function persist(){try{const o={};KEYS.forEach(k=>o[k]=S[k]);localStorage.setItem("tes16",JSON.stringify(o))}catch(e){}}
+/* ---------- audio ---------- */
+let AC=null;const ctx=()=>{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state=="suspended")AC.resume();return AC};
+const hz=m=>440*2**((m-69)/12),sn=d=>{const f=SCALES[S.scale].formula;return 60+S.root+12*Math.floor(d/7)+f[((d%7)+7)%7]};
+function tone(c,out,t,f,dur,ty,g){const o=c.createOscillator(),a=c.createGain();o.type=ty||"triangle";o.frequency.setValueAtTime(f,t);
+ a.gain.setValueAtTime(1e-4,t);a.gain.exponentialRampToValueAtTime(g,t+.02);a.gain.exponentialRampToValueAtTime(g*.7,t+.1);
+ a.gain.exponentialRampToValueAtTime(1e-4,t+dur);o.connect(a);a.connect(out);o.start(t);o.stop(t+dur+.05)}
+function chord(c,out,t,ns,dur,ty,arp){const g=.28/Math.sqrt(ns.length);ns.forEach((m,i)=>tone(c,out,t+(arp?i*.04:0),hz(m),dur,ty,g))}
+function noise(c,len){const b=c.createBuffer(1,c.sampleRate*len,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b}
+function drum(c,out,ty,t){const g=c.createGain();g.connect(out);
+ if(ty=="kick"||ty=="clave"){const o=c.createOscillator(),k=ty=="kick";o.connect(g);o.frequency.setValueAtTime(k?140:880,t);
+  if(k)o.frequency.exponentialRampToValueAtTime(38,t+.15);g.gain.setValueAtTime(k?.8:.4,t);g.gain.exponentialRampToValueAtTime(.001,t+(k?.25:.05));o.start(t);o.stop(t+.3)}
+ else{const s=c.createBufferSource(),f=c.createBiquadFilter(),h=ty=="hat";s.buffer=noise(c,.15);f.type="highpass";f.frequency.value=h?7000:800;
+  s.connect(f);f.connect(g);g.gain.setValueAtTime(h?.25:.4,t);g.gain.exponentialRampToValueAtTime(.001,t+(h?.04:.15));s.start(t);s.stop(t+.16);
+  if(ty=="snare"){const o=c.createOscillator(),og=c.createGain();o.frequency.setValueAtTime(185,t);o.frequency.exponentialRampToValueAtTime(70,t+.1);
+   og.gain.setValueAtTime(.3,t);og.gain.exponentialRampToValueAtTime(.001,t+.1);o.connect(og);og.connect(out);o.start(t);o.stop(t+.11)}}}
+function voice(c,out,sp,t,m,dur,v){const L=sp.stereoSpread>0?[[sp.harmonicDetune,-sp.stereoSpread],[-sp.harmonicDetune,sp.stereoSpread]]:[[sp.harmonicDetune,0]],
+ tg=Math.max((v||.3)*sp.sustain*(L.length>1?.75:1),1e-3),g=c.createGain(),hold=Math.max(dur,sp.attack+sp.decay+.01),end=t+hold+sp.release+.05;
+ g.gain.setValueAtTime(1e-4,t);g.gain.exponentialRampToValueAtTime(tg,t+sp.attack);g.gain.exponentialRampToValueAtTime(tg*.7,t+sp.attack+sp.decay);
+ g.gain.exponentialRampToValueAtTime(1e-4,t+hold+sp.release);g.connect(out);
+ if(sp.buf){const s=c.createBufferSource();s.buffer=sp.buf;s.playbackRate.value=hz(m)/hz(60);s.connect(g);s.start(t);s.stop(end);return}
+ const f=c.createBiquadFilter();f.type=sp.filterType;f.frequency.setValueAtTime(sp.filterFreq,t);f.Q.setValueAtTime(sp.resonance,t);f.connect(g);
+ L.forEach(([dt,pn])=>{const o=c.createOscillator();o.type=sp.waveform;o.frequency.setValueAtTime(hz(m),t);o.detune.setValueAtTime(dt,t);
+  if(pn){const p=c.createStereoPanner();p.pan.value=pn;o.connect(p);p.connect(f)}else o.connect(f);o.start(t);o.stop(end)})}
+function chain(c,fx,spb){const i=c.createGain();let n=i;const add=x=>{n.connect(x);n=x;return x};
+ if(fx.drive){const w=c.createWaveShaper(),k=fx.drive*80,cv=new Float32Array(1024);for(let j=0;j<1024;j++){const x=j/512-1;cv[j]=(1+k)*x/(1+k*Math.abs(x))}w.curve=cv;add(w)}
+ const lo=add(c.createBiquadFilter());lo.type="lowshelf";lo.frequency.value=200;lo.gain.value=fx.lo||0;
+ const hi=add(c.createBiquadFilter());hi.type="highshelf";hi.frequency.value=4000;hi.gain.value=fx.hi||0;
+ const lp=add(c.createBiquadFilter());lp.type="lowpass";lp.frequency.value=fx.lp;
+ if(fx.comp){const k=add(c.createDynamicsCompressor());k.threshold.value=-12-fx.comp*18;k.ratio.value=2+fx.comp*10;k.attack.value=.01;k.release.value=.2}
+ const m=c.createGain();m.gain.value=.8;n.connect(m);
+ if(fx.width){const sp=c.createChannelSplitter(2),mg=c.createChannelMerger(2),d=c.createDelay(.05);d.delayTime.value=fx.width*.02;
+  m.connect(sp);sp.connect(mg,0,0);sp.connect(d,1);d.connect(mg,0,1);mg.connect(c.destination)}else m.connect(c.destination);
+ if(fx.delay){const d=c.createDelay(2),fb=c.createGain(),wg=c.createGain();d.delayTime.value=spb*.75;fb.gain.value=.35;wg.gain.value=fx.delay;n.connect(d);d.connect(fb);fb.connect(d);d.connect(wg);wg.connect(m)}
+ if(fx.rev){const cv=c.createConvolver(),b=c.createBuffer(2,c.sampleRate*2,c.sampleRate),rg=c.createGain();
+  for(let h=0;h<2;h++){const d=b.getChannelData(h);for(let j=0;j<d.length;j++)d[j]=(Math.random()*2-1)*(1-j/d.length)**3}
+  cv.buffer=b;rg.gain.value=fx.rev*.5;n.connect(cv);cv.connect(rg);rg.connect(m)}
+ return i}
+function schedule(c,sc,fx,t0){const spb=60/(sc.bpm*(fx.bm||1)),bus=chain(c,fx,spb),solo=Object.values(S.mix).some(x=>x.s);
+ for(const [k,arr] of Object.entries(sc.tracks)){const mx=S.mix[k];if(!arr.length||mx.m||(solo&&!mx.s))continue;
+  const g=c.createGain(),p=c.createStereoPanner();g.gain.value=mx.v;p.pan.value=mx.p;g.connect(p);p.connect(bus);
+  arr.forEach(n=>{const t=t0+n.t*spb;if(k=="drums")drum(c,g,DRT[n.m]||"hat",t);else voice(c,g,spec(S.inst[k]),t,n.m,n.d*spb,n.v)})}
+ return sc.len*spb}
+/* ---------- score compiler ---------- */
+const CYC=[0,3,4,0,5,3,4,0],MOT=[0,2,4,2,3,2,1,0,4,5,4,2,0,4,1,0];
+const pool=()=>{const f=SCALES[S.scale].formula,b=60+S.root,p=[];[0,12].forEach(o=>f.slice(0,7).forEach(x=>p.push(b+o+x)));return p};
+function drumsTrack(bars,bpb){const o=[],n=S.grid[0].length,nm=["kick","snare","hat","clave"];
+ for(let b=0;b<bars;b++)for(let r=0;r<4;r++)for(let i=0;i<n;i++)if(S.grid[r][i])o.push({m:DRN[nm[r]],t:b*bpb+i*.25,d:.1,v:.5});return o}
+function compile(mode){const bpb=bpbOf(),T={lead:[],chords:[],bass:[],drums:[]},mut=mode=="mutate";let bars=16;
+ if(mode=="form"){const F=FORM_TEMPLATES[S.form],sev=/blues/i.test(F.title);let b0=0,k=0;bars=F.sections.reduce((a,s)=>a+s.bars,0);
+  F.sections.forEach(sec=>{const pr=sec.nnsProgression,tl=Math.max(1,Math.floor(sec.bars/pr.length)),dense=sec.intensity>=70,vv=.12+sec.intensity/100*.22;
+   for(let i=0;i<sec.bars;i++){const di=parseInt(pr[Math.min(pr.length-1,Math.floor(i/tl))])-1,t0=(b0+i)*bpb,st=dense?.5:1;
+    T.bass.push({m:sn(di)-24,t:t0,d:bpb*.95,v:vv+.1});
+    [0,2,4].concat(sev?[6]:[]).forEach(o=>T.chords.push({m:sn(di+o)-12,t:t0,d:bpb*.9,v:vv*.7}));
+    for(let x=0;x<bpb;x+=st)T.lead.push({m:sn(di+MOT[k++%16]),t:t0+x,d:st*.75,v:vv})}b0+=sec.bars})}
+ else{const Pl=pool();for(let b=0;b<bars;b++){const di=CYC[b%8],r=Pl[di%7],t0=b*bpb;T.bass.push({m:r-24,t:t0,d:bpb*.95,v:.35});
+  [r,Pl[(di+2)%7],Pl[(di+4)%7]].forEach(m=>T.chords.push({m:m-12,t:t0,d:bpb*.9,v:.22}));
+  for(let be=0;be<Math.floor(bpb);be++){if(!mut)T.lead.push({m:Pl[MOT[(b*4+be)%16]%Pl.length],t:t0+be,d:.75,v:.28});
+   else if(Math.random()>.2)T.lead.push({m:Pl[Math.floor(Math.random()*Pl.length)],t:t0+be,d:Math.random()>.5?.75:.4,v:.25+Math.random()*.1})}}}
+ if(S.drums)T.drums=drumsTrack(bars,bpb);
+ return{bpm:S.bpm,meter:S.meter,bars,len:bars*bpb,key:PN[S.root],scale:SCALES[S.scale].name,mode,tracks:T}}
+const ensure=()=>S.score||(S.score=compile(S.mode));
+const snap=()=>{S.hist.push(JSON.stringify(S.score));if(S.hist.length>60)S.hist.shift();S.redo=[]};
+/* ---------- exporters ---------- */
+const u32=n=>[n>>>24,n>>16&255,n>>8&255,n&255],vlq=n=>{const b=[n&127];while(n>>=7)b.unshift(n&127|128);return b},txt=(ty,s)=>[255,ty,s.length,...[...s].map(c=>c.charCodeAt(0)&127)];
+function trk(ev){ev.sort((a,b)=>a[0]-b[0]||a[2]-b[2]);let last=0;const o=[];ev.forEach(e=>{o.push(...vlq(e[0]-last),...e[1]);last=e[0]});o.push(0,255,47,0);return[77,84,114,107,...u32(o.length),...o]}
+function toMidi(sc){const P=480,us=Math.round(6e7/sc.bpm),dd=sc.meter==7?3:2,
+ parts=[77,84,104,100,0,0,0,6,0,1,0,5,P>>8,P&255,...trk([[0,txt(3,"Tempo"),0],[0,[255,81,3,us>>16&255,us>>8&255,us&255],0],[0,[255,88,4,sc.meter,dd,24,8],0]])];
+ [["bass",2,38],["chords",1,4],["lead",0,80],["drums",9,-1]].forEach(([k,ch,pg])=>{const ev=[[0,txt(3,k),0]];if(pg>=0)ev.push([0,[192|ch,pg],0]);
+  sc.tracks[k].forEach(n=>{const m=Math.max(0,Math.min(127,n.m)),vel=Math.max(1,Math.min(127,Math.round((n.v||.7)*127)));
+   ev.push([Math.round(n.t*P),[144|ch,m,vel],1],[Math.round((n.t+n.d)*P),[128|ch,m,0],0])});parts.push(...trk(ev))});
+ return new Blob([new Uint8Array(parts)],{type:"audio/midi"})}
+async function toWav(sc,fx){const sr=44100,spb=60/(sc.bpm*(fx.bm||1)),c=new OfflineAudioContext(2,Math.ceil(sr*(sc.len*spb+3)),sr);schedule(c,sc,fx,.05);
+ const buf=await c.startRendering(),L=buf.getChannelData(0),R=buf.getChannelData(1),n=L.length,v=new DataView(new ArrayBuffer(44+n*4)),w=(o,s)=>[...s].forEach((ch,i)=>v.setUint8(o+i,ch.charCodeAt(0)));
+ w(0,"RIFF");v.setUint32(4,36+n*4,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,2,true);v.setUint32(24,sr,true);
+ v.setUint32(28,sr*4,true);v.setUint16(32,4,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*4,true);
+ for(let i=0;i<n;i++)[L,R].forEach((ch,j)=>{const x=Math.max(-1,Math.min(1,ch[i]));v.setInt16(44+i*4+j*2,x<0?x*32768:x*32767,true)});
+ return new Blob([v.buffer],{type:"audio/wav"})}
+function save(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4e3)}
+/* ---------- UI helpers ---------- */
+const btn=(a,v,l,c)=>`<button class="${c||""}" data-a="${a}" data-v="${v}">${l}</button>`;
+const rng=(k,min,max,val,st)=>`<input type="range" data-i="${k}" min="${min}" max="${max}" step="${st||1}" value="${val}">`;
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function hud(){$("#xp").textContent=S.xp;$("#st").textContent=S.streak;$("#lv").textContent=Math.floor(S.xp/1000)+1}
+function toast(t,ok){const e=$("#toast");e.textContent=t;e.className=ok?"ok":"bad";hud()}
+function win(x,t,k){S.xp+=x;S.streak++;S.best=Math.max(S.best,S.streak);if(k)S.stats[k]++;toast(t+` (+${x} XP)`,1);persist()}
+function lose(t){S.streak=0;toast(t,0)}
+const keyLabel=()=>`${PN[S.root]} ${SCALES[S.scale].name}`,rep=n=>Math.round(n*100)/100;
+const RL=24,RH=96,RW=960,RHT=288,COL={lead:"#22d3ee",chords:"#fbbf24",bass:"#f43f5e",drums:"#a78bfa"};
+function rollSvg(){const s=ensure(),h=RHT/(RH-RL+1);
+ return`<svg data-a="roll" viewBox="0 0 ${RW} ${RHT}" width="100%" style="background:#020617;border-radius:8px;cursor:crosshair">`+
+ Array.from({length:Math.ceil(s.len)+1},(_,i)=>`<line x1="${i/s.len*RW}" x2="${i/s.len*RW}" y1="0" y2="${RHT}" stroke="${i%s.meter?"#0f172a":"#1e293b"}"/>`).join("")+
+ Object.entries(s.tracks).map(([k,a])=>a.map(n=>k=="drums"?`<rect x="${n.t/s.len*RW}" y="${RHT-6}" width="2" height="6" fill="${COL[k]}"/>`:
+  `<rect x="${n.t/s.len*RW}" y="${(RH-Math.min(RH,Math.max(RL,n.m)))*h}" width="${Math.max(2,n.d/s.len*RW)}" height="${Math.max(1.5,h-.4)}" fill="${COL[k]}" opacity="${k==S.ed?1:.45}"/>`).join("")).join("")+"</svg>"}
+function refHtml(){let h="",ul=false;REF.forEach(x=>{const li=x.startsWith("<li>");if(li&&!ul){h+="<ul>";ul=true}if(!li&&ul){h+="</ul>";ul=false}h+=x});return h+(ul?"</ul>":"")}
+/* ---------- lessons ---------- */
+const TABS=["1. Rhythm & Grid","2. Pitch & Scales","3. Harmony & Cadences","4. Expression & Form","5. Score & Piano Roll","6. Rig, Mixer & FX","7. Library & Log"];
+const head=(n,t,d)=>`<div class="m" style="color:var(--c)">LESSON ${n}</div><h2>${t}</h2><p class="m">${d}</p>`;
+const METERS=[[4,"4/4 (Standard)"],[3,"3/4 (Waltz)"],[5,"5/4 (Dave Brubeck)"],[7,"7/8 (Asymmetric)"]];
+function t0(){const n=steps();return head(1,"Rhythm, Meter &amp; Syncopation","Without a steady pulse, pitch has no anchor. This grid also feeds the optional drum stem in Lesson 5.")+
+ `<div class="row">${btn("play","",S.seq?"Pause grid":"Start clock","go")}${btn("clear","","Clear")} BPM ${rng("bpm",60,180,S.bpm)}<b id="bv">${S.bpm}</b>
+ ${METERS.map(([m,l])=>btn("meter",m,l,S.meter==m?"on":"")).join("")}</div>`+
+ ["Kick (Tonic Pulse)","Snare (Backbeat)","Hi-Hat (Subdivision)","Clave (Syncopation)"].map((l,r)=>`<div class="row"><span class="m" style="width:120px">${l}</span><div class="g" style="grid-template-columns:repeat(${n},1fr);flex:1;min-width:300px">`+
+  S.grid[r].map((x,c)=>`<button class="step ${x?"act":""}" data-a="cell" data-v="${r},${c}"></button>`).join("")+"</div></div>").join("")+
+ `<div class="card"><h3>Mini-game: Syncopation Pocket Challenge (${S.stats.rhythm} wins)</h3><p class="m">Start the clock, then tap on the beat you hear. Land the off-beat (&amp;) to lock the groove.</p>
+ <div class="row">${btn("tap",0,"Downbeat (1, 2, 3, 4)")}${btn("tap",1,"Hit The Off-Beat (&amp;)","go")}</div></div>`}
+function t1(){return head(2,"Pitch, Scales &amp; Keys","12 equal semitones, scale formulas, and functional scale degrees.")+
+ `<div class="row">${PN.map((x,i)=>btn("root",i,x,S.root==i?"on":"")).join("")}</div>
+ <div class="row">${Object.entries(SCALES).map(([k,s])=>btn("scale",k,`${s.name}<br><span class="m">${s.pattern}</span>`,S.scale==k?"on":"")).join("")}</div>
+ <div class="row"><b>${keyLabel()}</b>${btn("aud","","Audition scale","go")}</div><div class="cards">`+
+ SCALES[S.scale].formula.map((_,i)=>{const m=sn(i);return`<button data-a="note" data-v="${m}"><span class="m">${DEGREE_NAMES[i]}</span><br><b style="color:var(--c);font-size:18px">${PN[m%12]}</b><br><span class="m">${Math.round(hz(m))} Hz</span></button>`}).join("")+
+ `</div><div class="card" style="margin-top:10px"><h3>Mini-game: Functional Degree Hunter (${S.stats.degree} wins)</h3><p>Find: <b style="color:var(--a)">${DEGREE_NAMES[S.qd]}</b></p>
+ <div class="row">${[0,1,2,3,4,5,6].map(i=>btn("deg",i,"Degree "+(i+1))).join("")}</div></div>`}
+function t2(){return head(3,"Intervals, Harmony &amp; Cadences","Stacked thirds, inversions, the Nashville Number System, and the 8-shape cadence bank.")+
+ `<div class="row">${Object.entries(CHORD_LIBRARY).map(([k,c])=>btn("ct",k,`<b>${c.label}</b><br><span class="m">${c.mood}</span>`,S.ct==k?"on":"")).join("")}</div>
+ <div class="row">${["Root Position","1st Inversion","2nd Inversion"].map((l,i)=>btn("inv",i,"Play "+l)).join("")}</div>
+ <h3>Cadences as progression shapes</h3><div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">`+
+ CADENCE_BANK.map((c,i)=>`<button data-a="cad" data-v="${i}" style="text-align:left"><b style="color:var(--c)">${c.name}</b> <span class="m">${c.formulaRoman.join(" &rarr; ")}</span>
+<br><span class="m">${c.description}</span><br><span style="color:var(--a)" class="m">${c.gravity}</span> <span class="m">NNS: ${c.formulaNNS.join(" - ")}</span></button>`).join("")+
+ `</div><h3>Nashville Number System in ${PN[S.root]}</h3><div class="cards">`+
+ NNS_MAJOR_SYSTEM.map(x=>`<div class="card" style="margin:0;text-align:center"><b style="color:var(--a);font-size:16px">${x.number}</b> <span class="m">${x.roman}</span><br>${PN[(S.root+x.semitoneOffset)%12]}${x.quality=="min"?"m":x.quality=="dim"?"dim":""}
+<br><span class="m">${x.name}</span><br><span class="m">${x.role}</span></div>`).join("")+
+ `</div><div class="card" style="margin-top:10px"><h3>Mini-game: Blind Cadence Detective (${S.stats.cadence} wins)</h3><div class="row">${btn("mys","","Audition mystery cadence","go")}
+ ${["Authentic","Plagal","Deceptive","Half"].map(g=>btn("guess",g,g)).join("")}</div></div>`}
+function t3(){const F=FORM_TEMPLATES[S.form];return head(4,"Expression, Acoustics &amp; Form","Timbre is overtone content plus attack and decay; form is the macro blueprint.")+
+ `<div class="card"><h3>Envelope Sculptor</h3><div class="row">${["sine","triangle","sawtooth","square"].map(w=>btn("tim",w,w,S.tim==w?"on":"")).join("")}
+ Cutoff ${rng("cut",200,8000,S.cut,50)}<b id="cv">${S.cut} Hz</b> Attack ${rng("att",.01,.5,S.att,.01)}<b id="av">${Math.round(S.att*1e3)} ms</b>${btn("env","","Fire test","go")}</div></div>
+ <div class="row">${FORM_TEMPLATES.map((f,i)=>btn("form",i,f.title.split("(")[0],S.form==i?"on":"")).join("")}</div>
+ <p><b>${F.title}</b> <span class="m">${F.totalBars} bars | ${F.timeSig}</span></p><p class="m">${F.description}</p>
+ <table><tr><th></th><th>Section</th><th>Bars</th><th>NNS</th><th>Dyn</th><th>Intensity</th><th>Purpose</th></tr>`+
+ F.sections.map((s,i)=>`<tr><td>${btn("sec",i,"&#9658;")}</td><td>${s.name}</td><td>${s.bars}</td><td>${s.nnsProgression.join("-")}</td><td>${s.dynamics}</td><td style="width:90px"><div class="bar" style="width:${s.intensity}%"></div></td><td>${s.purpose}</td></tr>`).join("")+
+ `</table><p class="m">Pick "Form-driven" in Lesson 5 to compile this blueprint into a full score.</p>`}
+function t4(){const s=S.score;return head(5,"Score Compiler &amp; Piano Roll","GUI-to-score, no prompts. Compile, then click the roll to add or delete notes on the selected stem.")+
+ `<div class="card"><b>Locked telemetry:</b> ${keyLabel()} | ${S.bpm} BPM | ${METERS.find(m=>m[0]==S.meter)[1]} | Cycle 1-4-5-1-6m-4-5-1 (classic)</div>
+ <div class="row">Mode ${[["classic","Classic v14 (exact)"],["mutate","Mutate (random)"],["form","Form-driven"]].map(([k,l])=>btn("mode",k,l,S.mode==k?"on":"")).join("")}
+ <label><input type="checkbox" data-i="drums" ${S.drums?"checked":""}> Drum stem from Lesson 1 grid</label></div>
+ <div class="row">${btn("comp","","Compile score","go")}${btn("undo","","Undo")}${btn("redo","","Redo")}${btn("playsc","","Play","go")}${btn("stop","","Stop")}${btn("midi","","Export MIDI")}${btn("wav","","Export WAV")}</div>
+ <div class="row">Edit stem ${["lead","chords","bass"].map(k=>btn("ed",k,k,S.ed==k?"on":"")).join("")} <span class="m">cyan lead, gold chords, red bass, violet drums</span></div>`+
+ (s?`<p class="m">${s.mode} score: ${s.bars} bars; lead ${s.tracks.lead.length} / chords ${s.tracks.chords.length} / bass ${s.tracks.bass.length} / drums ${s.tracks.drums.length} notes.</p>${rollSvg()}`:"<p class='m'>Press Compile.</p>")}
+function t5(){const sel=st=>`<select data-i="i_${st}">${PRESETS.filter(p=>p.category==st).concat(SAMP?[SAMP]:[]).map(p=>`<option value="${p.id}" ${S.inst[st]==p.id?"selected":""}>${p.name}</option>`).join("")}</select>`;
+ const mx=k=>`<div class="row"><b style="width:60px;color:${COL[k]}">${k}</b>Vol ${rng("v_"+k,0,1.5,S.mix[k].v,.05)} Pan ${rng("p_"+k,-1,1,S.mix[k].p,.1)}${btn("mute",k,"M",S.mix[k].m?"on":"")}${btn("solo",k,"S",S.mix[k].s?"on":"")}</div>`;
+ const f=S.fx;return head(6,"Virtual Rig, Mixer &amp; FX Rack","Exact v14 instrument presets, a stem mixer, an insert FX chain, and a bring-your-own-sample instrument.")+
+ `<div class="card"><b>Locked blueprint:</b> ${keyLabel()} | ${S.bpm} BPM | ${S.score?S.score.bars:16} bars</div>
+ <div class="row">Lead ${sel("lead")} Chords ${sel("chords")} Bass ${sel("bass")}</div>
+ <div class="row"><label class="btn">Load sample (.wav/.mp3) as instrument<input type="file" id="smp" accept="audio/*" hidden></label><span class="m">${SAMP?"Loaded: "+esc(SAMP.name)+" (not saved in project)":"Sample is pitched from C4 and can be assigned to any stem."}</span></div>
+ <h3>Mixer</h3>${STEMS.map(mx).join("")}<h3>FX rack</h3>
+ <div class="row">Style <select data-i="sty">${Object.keys(STY).map(k=>`<option ${S.sty==k?"selected":""}>${k}</option>`).join("")}</select></div>
+ <div class="row">Drive ${rng("f_drive",0,1,f.drive,.05)} EQ low ${rng("f_lo",-12,12,f.lo,1)} EQ high ${rng("f_hi",-12,12,f.hi,1)} Lowpass ${rng("f_lp",500,20000,f.lp,100)}</div>
+ <div class="row">Comp ${rng("f_comp",0,1,f.comp,.05)} Delay ${rng("f_delay",0,.6,f.delay,.05)} Reverb ${rng("f_rev",0,1,f.rev,.05)} Haas width ${rng("f_width",0,1,f.width,.05)} Tempo x ${rng("f_bm",.5,1.5,f.bm,.05)}</div>
+ <div class="row">${btn("playsc","","Play","go")}${btn("stop","","Stop")}${btn("wav","","Export WAV")}${btn("midi","","Export MIDI")}</div>`}
+function t6(){return head(7,"Theory Library, Notes &amp; Change Log","Your complete reference text, a persistent notes pad, and the full engineering history through V16.")+
+ `<h3>Project</h3><p class="m">Progress, settings, grid, mixer, FX, score and notes autosave in this browser. Use Save project / Load project in the header for a portable JSON backup.
+ Lifetime best streak: ${S.best}. Games won: rhythm ${S.stats.rhythm}, degree ${S.stats.degree}, cadence ${S.stats.cadence}. Renders: ${S.stats.renders}.</p>
+ <h3>Notes</h3><textarea data-i="notes" placeholder="Your notes...">${esc(S.notes)}</textarea>
+ <h3>The Complete Music Theory Synthesis</h3><div class="ref card">${refHtml()}</div><h3>Change log, architecture and roadmap</h3><pre>${esc(LOG.join("\n"))}</pre>`}
+const VIEWS=[t0,t1,t2,t3,t4,t5,t6];
+function render(){$("#nav").innerHTML=TABS.map((t,i)=>btn("tab",i,t,S.tab==i?"on":"")).join("");$("#main").innerHTML=VIEWS[S.tab]();hud();persist()}
+/* ---------- actions ---------- */
+const mark=s=>document.querySelectorAll(".step").forEach((e,i)=>e.classList.toggle("cur",S.seq&&i%steps()==s));
+function seqStart(){const c=ctx();S.step=0;let next=c.currentTime+.05;S.seq=true;
+ S.timer=setInterval(()=>{while(next<c.currentTime+.15){const st=S.step%steps();["kick","snare","hat","clave"].forEach((d,i)=>S.grid[i][st]&&drum(c,c.destination,d,next));
+  setTimeout(()=>mark(st),Math.max(0,(next-c.currentTime)*1e3));next+=60/S.bpm/4;S.step++}},25)}
+function seqStop(){clearInterval(S.timer);S.seq=false}
+function stopAll(){seqStop();if(AC){AC.close();AC=null}}
+function playCad(c,base){const cx=ctx();let t=cx.currentTime+.05;c.chords.forEach(ch=>{chord(cx,AC.destination,t,ch.semitones.map(s=>base+s),ch.duration,"triangle",true);t+=.75})}
+function nnsNotes(tok,sev){const d=parseInt(tok)-1;return[0,2,4].concat(sev?[6]:[]).map(o=>sn(d+o))}
+const A={
+ tab(v){stopAll();S.tab=+v;render()},play(){S.seq?seqStop():seqStart();render()},clear(){S.grid=S.grid.map(r=>r.map(()=>false));render()},
+ meter(v){S.meter=+v;resize();S.score=null;render()},cell(v){const[r,c]=v.split(",").map(Number);S.grid[r][c]=!S.grid[r][c];render()},
+ tap(v){ctx();drum(AC,AC.destination,"clave",AC.currentTime);if(!S.seq)return toast("Start the clock first.",0);const st=(S.step+steps()-1)%steps();
+  (+v==1&&st%4==2)?win(100,"Groove Locked! Syncopation detected","rhythm"):(+v==0&&st%4==0)?toast("Downbeat landed. Try anticipating the '&' groove!",1):lose("Missed the pocket.")},
+ root(v){S.root=+v;S.score=null;tone(ctx(),AC.destination,AC.currentTime,hz(60+S.root),.3,"triangle",.3);render()},scale(v){S.scale=v;S.score=null;render()},
+ aud(){const c=ctx();SCALES[S.scale].formula.forEach((_,i)=>tone(c,c.destination,c.currentTime+i*.22,hz(sn(i)),.4,"triangle",.3))},
+ note(v){tone(ctx(),AC.destination,AC.currentTime,hz(+v),.5,"triangle",.3)},
+ deg(v){+v==S.qd?(win(150,"Target Acquired: "+DEGREE_NAMES[S.qd],"degree"),S.qd=Math.floor(Math.random()*7)):lose("Off-target: that was "+DEGREE_NAMES[+v]+". Target was "+DEGREE_NAMES[S.qd]);render()},
+ ct(v){S.ct=v;render()},
+ inv(v){const n=CHORD_LIBRARY[S.ct].intervals.map(i=>60+S.root+i);if(v>=1)n[0]+=12;if(v>=2)n[1]+=12;n.sort((a,b)=>a-b);chord(ctx(),AC.destination,AC.currentTime,n,1.2,"sawtooth",true)},
+ cad(v){playCad(CADENCE_BANK[+v],60+S.root)},mys(){playCad(CADENCE_BANK.find(x=>x.category==S.qc),60+S.root)},
+ guess(v){if(v==S.qc){win(200,"Cadence Decoded: "+v,"cadence");S.qc=["Authentic","Plagal","Deceptive","Half"][Math.floor(Math.random()*4)]}else lose("Subverted! It was not "+v+". Listen for root motion in the bass!");render()},
+ tim(v){S.tim=v;render()},
+ env(){const c=ctx(),t=c.currentTime,o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type=S.tim;o.frequency.value=hz(60+S.root);f.type="lowpass";f.frequency.value=S.cut;
+  g.gain.setValueAtTime(1e-4,t);g.gain.exponentialRampToValueAtTime(.4,t+S.att);g.gain.exponentialRampToValueAtTime(1e-4,t+1.2);o.connect(f);f.connect(g);g.connect(c.destination);o.start(t);o.stop(t+1.25)},
+ form(v){S.form=+v;render()},
+ sec(v){const F=FORM_TEMPLATES[S.form],c=ctx(),sev=/blues/i.test(F.title);F.sections[+v].nnsProgression.forEach((tk,i)=>chord(c,c.destination,c.currentTime+.05+i*.7,nnsNotes(tk,sev),.8,"triangle",false))},
+ mode(v){S.mode=v;render()},comp(){if(S.score)snap();S.score=compile(S.mode);toast(S.mode+" score compiled.",1);render()},
+ undo(){if(!S.hist.length)return;S.redo.push(JSON.stringify(S.score));S.score=JSON.parse(S.hist.pop());render()},
+ redo(){if(!S.redo.length)return;S.hist.push(JSON.stringify(S.score));S.score=JSON.parse(S.redo.pop());render()},
+ ed(v){S.ed=v;render()},
+ roll(v,e,el){const s=ensure(),r=el.getBoundingClientRect(),beat=Math.floor((e.clientX-r.left)/r.width*s.len*4)/4,m=RH-Math.floor((e.clientY-r.top)/r.height*(RH-RL+1)),arr=s.tracks[S.ed],
+  hit=arr.findIndex(n=>n.m==m&&beat>=n.t&&beat<n.t+n.d);snap();if(hit>=0)arr.splice(hit,1);else{arr.push({m,t:beat,d:.5,v:.3});arr.sort((a,b)=>a.t-b.t);
+  const c=ctx();voice(c,c.destination,spec(S.inst[S.ed]),c.currentTime,m,.4,.3)}render()},
+ playsc(){const c=ctx();schedule(c,ensure(),S.fx,c.currentTime+.1);S.xp+=50;hud()},stop(){stopAll()},
+ midi(){save(toMidi(ensure()),"theory-engine-v16.mid")},
+ async wav(){toast("Rendering WAV...",1);save(await toWav(ensure(),S.fx),"theory-engine-v16.wav");S.stats.renders++;S.xp+=250;toast("WAV exported (+250 XP).",1);persist()},
+ mute(k){S.mix[k].m=S.mix[k].m?0:1;render()},solo(k){S.mix[k].s=S.mix[k].s?0:1;render()}};
+const I={bpm(v){S.bpm=+v;S.score&&(S.score.bpm=+v);$("#bv").textContent=v;persist()},cut(v){S.cut=+v;$("#cv").textContent=v+" Hz"},att(v){S.att=+v;$("#av").textContent=Math.round(v*1e3)+" ms"},
+ drums(v,el){S.drums=el.checked;persist()},notes(v){S.notes=v;persist()},
+ sty(v){S.sty=v;S.fx={...STY[v]};render()}};
+document.addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(b&&A[b.dataset.a])A[b.dataset.a](b.dataset.v,e,b)});
+document.addEventListener("input",e=>{const el=e.target,k=el.dataset.i;if(!k)return;
+ if(I[k])return I[k](el.value,el);const[p,s]=[k.slice(0,2),k.slice(2)];
+ if(p=="i_"){S.inst[s]=el.value;persist()}else if(p=="v_"){S.mix[s].v=+el.value;persist()}else if(p=="p_"){S.mix[s].p=+el.value;persist()}else if(p=="f_"){S.fx[s]=+el.value;persist()}});
+document.addEventListener("change",async e=>{const el=e.target;
+ if(el.id=="smp"&&el.files[0]){const f=el.files[0];try{const buf=await ctx().decodeAudioData(await f.arrayBuffer());
+  SAMP={id:"sample",name:"Sample: "+f.name,category:"lead",waveform:"sine",filterType:"lowpass",filterFreq:20000,resonance:0,attack:.005,decay:.2,sustain:.8,release:.2,harmonicDetune:0,stereoSpread:0,buf};
+  toast("Sample loaded. Assign it in a stem dropdown.",1);render()}catch(x){toast("Could not decode that audio file.",0)}}
+ if(el.id=="imp"&&el.files[0]){try{const o=JSON.parse(await el.files[0].text());KEYS.forEach(k=>{if(o[k]!==undefined)S[k]=o[k]});resize();toast("Project loaded.",1);render()}catch(x){toast("Not a valid project file.",0)}}});
+document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+ if(e.code=="Space"){e.preventDefault();S.tab==0?A.play():A.playsc()}if((e.ctrlKey||e.metaKey)&&e.key=="z"){e.preventDefault();e.shiftKey?A.redo():A.undo()}});
+$("#ping").onclick=()=>tone(ctx(),AC.destination,AC.currentTime,523.25,.2,"sine",.2);
+$("#sv").onclick=()=>{const o={};KEYS.forEach(k=>o[k]=S[k]);save(new Blob([JSON.stringify(o)],{type:"application/json"}),"theory-engine-project.json")};
+render();
+</script></body></html>
