@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VariTheory V16</title>
+<title>VariTheory V17</title>
 <style>
 :root{--bg:#020617;--p:#0f172a;--b:#1e293b;--t:#e2e8f0;--m:#94a3b8;--c:#22d3ee;--a:#fbbf24;--r:#f43f5e;--g:#34d399}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px system-ui,sans-serif;padding:12px}
@@ -20,7 +20,7 @@ textarea{width:100%;min-height:90px}table{border-collapse:collapse;width:100%;fo
 .bar{height:8px;background:linear-gradient(90deg,#22d3ee,#fbbf24);border-radius:4px}pre{white-space:pre-wrap;font-size:11px;color:var(--m);max-height:420px;overflow:auto}
 .ref{max-height:520px;overflow:auto}.ref h3{color:var(--c)}.ref li{margin:3px 0}
 </style></head><body><div class="w">
-<header><div><h1>VARITHEORY <span style="color:var(--a)">V16</span></h1><div class="m">Theory &rarr; Score &rarr; Song. Offline, zero dependencies, autosaved.</div></div>
+<header><div><h1>VARITHEORY <span style="color:var(--a)">V17</span></h1><div class="m">Theory &rarr; Score &rarr; Song. Offline, zero dependencies, autosaved.</div></div>
 <div class="row"><span>Lv <b id="lv" style="color:var(--g)">1</b></span><span>XP <b id="xp" style="color:var(--a)">0</b></span><span>Streak <b id="st" style="color:var(--c)">0</b></span>
 <button id="ping">&#128266;</button><button id="sv">Save project</button><label class="btn">Load project<input type="file" id="imp" accept=".json" hidden></label></div></header>
 <div id="toast"></div><nav id="nav"></nav><main id="main"></main></div>
@@ -1540,11 +1540,16 @@ const REF=[
 "- Drum stem from the Lesson 1 grid; 4-track SMF (drums on channel 10); stereo WAV export.",
 "- Interactive piano roll with undo/redo; stem mixer (vol/pan/mute/solo); FX rack (drive, EQ, lowpass, compressor, delay, reverb, Haas width); sample-instrument loader.",
 "- AI cover (@flowmusic/sdk) replaced by offline style presets; v14 default cover prompt kept as the Cinematic Orchestra preset name.",
-"THEORY ENGINE STUDIO V16 (this release)",
+"THEORY ENGINE STUDIO V16",
 "- Publication release: the Claude.ai-verified V15 build ships as a standalone public GitHub repository with GitHub Pages, so anyone can run it from a URL with no install.",
 "- Why: V15 existed only as local files and a PDF print copy; V16 gives the app a permanent public home without touching the verified theory engine, compiler, or exporters.",
 "- Version identifiers bumped to V16 (title, header, autosave key tes16, export filenames varitheory-v16.mid / .wav, project state v:16). No functional code changes from V15.",
-"- Public name: VariTheory. Variation governed by theory, which is the mechanism: a deterministic theory compiler whose lead can be mutated inside the scale. The name was cleared against existing music software, trademark records and domain registries before adoption."
+"- Public name: VariTheory. Variation governed by theory, which is the mechanism: a deterministic theory compiler whose lead can be mutated inside the scale. The name was cleared against existing music software, trademark records and domain registries before adoption.",
+"VARITHEORY V17 (this release)",
+"- Cadence-driven drum stem. The Lesson 1 grid is now the seed pattern, and the drum stem varies bar by bar with the cadence shift: tonic bars play the grid straight, subdominant bars lift the clave onto the pocket accents, submediant bars shift the kick off the downbeat into the pocket, dominant bars build ghost hats and fill the last beat-group into the resolution.",
+"- Why: a photocopied loop ignores the harmony it plays under, and the old stem only existed when the drum box was ticked, so exported MIDI kept arriving with an empty drums track. Variation is now a deterministic function of three things the user already controls: the grid, the meter pocket (accent groups for simple and compound, duple and triple meters), and the cadence position.",
+"- Relevance under mutation: the drums are a function of the grid, the meter and the cadence only, never of the random mutation draws, so mutating the lead, chords or bass leaves the drum performance locked to the same harmonic rhythm.",
+"- Form-driven compiles now generate the drum stem too, driven bar by bar by each section's Nashville progression. Primary pocket accents also carry a velocity lift (0.65 against the 0.5 base)."
 ];
 const $=s=>document.querySelector(s),PN=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const BASIC=[["lead","triangle"],["chords","sawtooth"],["bass","sine"]].map(([c,w])=>({id:"basic_"+c,name:"Basic oscillator ("+c+", v14 Lesson 5 voice)",category:c,waveform:w,
@@ -1557,15 +1562,15 @@ const STY={"Clean (no FX)":CLEAN,"Cinematic Orchestra":{...CLEAN,lp:9000,delay:.
  "Wide Synthwave":{...CLEAN,lp:12000,delay:.35,rev:.3,comp:.4,width:.9,lo:2,hi:3}};
 const DRN={kick:36,snare:38,hat:42,clave:75},DRT={36:"kick",38:"snare",42:"hat",75:"clave"};
 const KEYS=["v","root","scale","bpm","meter","tab","xp","streak","best","grid","mode","form","ct","inst","mix","fx","sty","score","notes","drums","stats"];
-const DEF=()=>({v:16,root:0,scale:"major",bpm:110,meter:4,tab:0,xp:0,streak:0,best:0,grid:null,mode:"classic",form:0,ct:"maj7",drums:false,notes:"",
+const DEF=()=>({v:17,root:0,scale:"major",bpm:110,meter:4,tab:0,xp:0,streak:0,best:0,grid:null,mode:"classic",form:0,ct:"maj7",drums:false,notes:"",
  inst:{lead:"lead_analog_saw",chords:"chords_warm_pad",bass:"bass_moog_sub"},sty:"Clean (no FX)",score:null,stats:{rhythm:0,degree:0,cadence:0,renders:0},
  mix:{lead:{v:1,m:0,s:0,p:0},chords:{v:1,m:0,s:0,p:0},bass:{v:1,m:0,s:0,p:0},drums:{v:.8,m:0,s:0,p:0}},fx:{...CLEAN}});
 const S=Object.assign(DEF(),{seq:false,step:0,qd:4,qc:"Authentic",tim:"sawtooth",cut:2000,att:.05,ed:"lead",hist:[],redo:[]});
-try{const o=JSON.parse(localStorage.getItem("tes16")||"null");if(o)KEYS.forEach(k=>{if(o[k]!==undefined)S[k]=o[k]})}catch(e){}
+try{const o=JSON.parse(localStorage.getItem("tes17")||"null");if(o)KEYS.forEach(k=>{if(o[k]!==undefined)S[k]=o[k]})}catch(e){}
 const DR0=[[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],Array(16).fill(1),[0,0,1,0,0,0,1,0,0,0,1,0,0,1,0,0]];
 const steps=()=>S.meter==7?14:S.meter*4,bpbOf=()=>S.meter==7?3.5:S.meter;
 function resize(){const n=steps();S.grid=(S.grid||DR0).map(r=>Array.from({length:n},(_,i)=>!!r[i]))}resize();
-function persist(){try{const o={};KEYS.forEach(k=>o[k]=S[k]);localStorage.setItem("tes16",JSON.stringify(o))}catch(e){}}
+function persist(){try{const o={};KEYS.forEach(k=>o[k]=S[k]);localStorage.setItem("tes17",JSON.stringify(o))}catch(e){}}
 /* ---------- audio ---------- */
 let AC=null;const ctx=()=>{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state=="suspended")AC.resume();return AC};
 const hz=m=>440*2**((m-69)/12),sn=d=>{const f=SCALES[S.scale].formula;return 60+S.root+12*Math.floor(d/7)+f[((d%7)+7)%7]};
@@ -1611,20 +1616,27 @@ function schedule(c,sc,fx,t0){const spb=60/(sc.bpm*(fx.bm||1)),bus=chain(c,fx,sp
 /* ---------- score compiler ---------- */
 const CYC=[0,3,4,0,5,3,4,0],MOT=[0,2,4,2,3,2,1,0,4,5,4,2,0,4,1,0];
 const pool=()=>{const f=SCALES[S.scale].formula,b=60+S.root,p=[];[0,12].forEach(o=>f.slice(0,7).forEach(x=>p.push(b+o+x)));return p};
-function drumsTrack(bars,bpb){const o=[],n=S.grid[0].length,nm=["kick","snare","hat","clave"];
- for(let b=0;b<bars;b++)for(let r=0;r<4;r++)for(let i=0;i<n;i++)if(S.grid[r][i])o.push({m:DRN[nm[r]],t:b*bpb+i*.25,d:.1,v:.5});return o}
-function compile(mode){const bpb=bpbOf(),T={lead:[],chords:[],bass:[],drums:[]},mut=mode=="mutate";let bars=16;
+function drumsTrack(bars,bpb,deg){const o=[],n=S.grid[0].length,nm=["kick","snare","hat","clave"],sd=bpb/n,
+ PK={4:{g:[4,4,4,4],p:[0,8],s:[4,12]},3:{g:[4,4,4],p:[0],s:[4,8]},5:{g:[12,8],p:[0],s:[12]},7:{g:[4,4,6],p:[0,8],s:[4]}}[S.meter]||{g:[n],p:[0],s:[]},
+ cls=di=>di==0?"tonic":di==3?"subdom":di==4?"dom":di==5?"submed":"motion",starts=[];{let a=0;PK.g.forEach(x=>{starts.push(a);a+=x})}
+ for(let b=0;b<bars;b++){const c=cls(deg?deg[b]:0),rows=S.grid.map(r=>r.slice()),vel=S.grid.map(r=>r.map(()=>.5)),add=(r,i,v)=>{if(i<n&&!rows[r][i]){rows[r][i]=true;vel[r][i]=v}};
+  if(c=="subdom")PK.s.forEach(i=>add(3,i,.55));
+  if(c=="submed"){rows[0][0]=false;add(0,starts[starts.length-1],.6)}
+  if(c=="dom"){for(let i=1;i<n;i+=2)add(2,i,.35);const ls=starts[starts.length-1];for(let i=ls;i<n;i++){rows[1][i]=true;vel[1][i]=.55}add(0,n-1,.6)}
+  PK.p.forEach(i=>{for(let r=0;r<4;r++)if(rows[r][i])vel[r][i]=.65});
+  for(let r=0;r<4;r++)for(let i=0;i<n;i++)if(rows[r][i])o.push({m:DRN[nm[r]],t:b*bpb+i*sd,d:.1,v:vel[r][i]})}return o}
+function compile(mode){const bpb=bpbOf(),T={lead:[],chords:[],bass:[],drums:[]},barDeg=[],mut=mode=="mutate";let bars=16;
  if(mode=="form"){const F=FORM_TEMPLATES[S.form],sev=/blues/i.test(F.title);let b0=0,k=0;bars=F.sections.reduce((a,s)=>a+s.bars,0);
   F.sections.forEach(sec=>{const pr=sec.nnsProgression,tl=Math.max(1,Math.floor(sec.bars/pr.length)),dense=sec.intensity>=70,vv=.12+sec.intensity/100*.22;
-   for(let i=0;i<sec.bars;i++){const di=parseInt(pr[Math.min(pr.length-1,Math.floor(i/tl))])-1,t0=(b0+i)*bpb,st=dense?.5:1;
+   for(let i=0;i<sec.bars;i++){const di=(parseInt(String(pr[Math.min(pr.length-1,Math.floor(i/tl))]).replace("\u266d",""))-1+7)%7;barDeg.push(di);const t0=(b0+i)*bpb,st=dense?.5:1;
     T.bass.push({m:sn(di)-24,t:t0,d:bpb*.95,v:vv+.1});
     [0,2,4].concat(sev?[6]:[]).forEach(o=>T.chords.push({m:sn(di+o)-12,t:t0,d:bpb*.9,v:vv*.7}));
     for(let x=0;x<bpb;x+=st)T.lead.push({m:sn(di+MOT[k++%16]),t:t0+x,d:st*.75,v:vv})}b0+=sec.bars})}
- else{const Pl=pool();for(let b=0;b<bars;b++){const di=CYC[b%8],r=Pl[di%7],t0=b*bpb;T.bass.push({m:r-24,t:t0,d:bpb*.95,v:.35});
+ else{const Pl=pool();for(let b=0;b<bars;b++){const di=CYC[b%8];barDeg.push(di);const r=Pl[di%7],t0=b*bpb;T.bass.push({m:r-24,t:t0,d:bpb*.95,v:.35});
   [r,Pl[(di+2)%7],Pl[(di+4)%7]].forEach(m=>T.chords.push({m:m-12,t:t0,d:bpb*.9,v:.22}));
   for(let be=0;be<Math.floor(bpb);be++){if(!mut)T.lead.push({m:Pl[MOT[(b*4+be)%16]%Pl.length],t:t0+be,d:.75,v:.28});
    else if(Math.random()>.2)T.lead.push({m:Pl[Math.floor(Math.random()*Pl.length)],t:t0+be,d:Math.random()>.5?.75:.4,v:.25+Math.random()*.1})}}}
- if(S.drums)T.drums=drumsTrack(bars,bpb);
+ if(S.drums)T.drums=drumsTrack(bars,bpb,barDeg);
  return{bpm:S.bpm,meter:S.meter,bars,len:bars*bpb,key:PN[S.root],scale:SCALES[S.scale].name,mode,tracks:T}}
 const ensure=()=>S.score||(S.score=compile(S.mode));
 const snap=()=>{S.hist.push(JSON.stringify(S.score));if(S.hist.length>60)S.hist.shift();S.redo=[]};
@@ -1700,7 +1712,7 @@ function t3(){const F=FORM_TEMPLATES[S.form];return head(4,"Expression, Acoustic
 function t4(){const s=S.score;return head(5,"Score Compiler &amp; Piano Roll","GUI-to-score, no prompts. Compile, then click the roll to add or delete notes on the selected stem.")+
  `<div class="card"><b>Locked telemetry:</b> ${keyLabel()} | ${S.bpm} BPM | ${METERS.find(m=>m[0]==S.meter)[1]} | Cycle 1-4-5-1-6m-4-5-1 (classic)</div>
  <div class="row">Mode ${[["classic","Classic v14 (exact)"],["mutate","Mutate (random)"],["form","Form-driven"]].map(([k,l])=>btn("mode",k,l,S.mode==k?"on":"")).join("")}
- <label><input type="checkbox" data-i="drums" ${S.drums?"checked":""}> Drum stem from Lesson 1 grid</label></div>
+ <label><input type="checkbox" data-i="drums" ${S.drums?"checked":""}> Drum stem: Lesson 1 grid, cadence-driven</label></div>
  <div class="row">${btn("comp","","Compile score","go")}${btn("undo","","Undo")}${btn("redo","","Redo")}${btn("playsc","","Play","go")}${btn("stop","","Stop")}${btn("midi","","Export MIDI")}${btn("wav","","Export WAV")}</div>
  <div class="row">Edit stem ${["lead","chords","bass"].map(k=>btn("ed",k,k,S.ed==k?"on":"")).join("")} <span class="m">cyan lead, gold chords, red bass, violet drums</span></div>`+
  (s?`<p class="m">${s.mode} score: ${s.bars} bars; lead ${s.tracks.lead.length} / chords ${s.tracks.chords.length} / bass ${s.tracks.bass.length} / drums ${s.tracks.drums.length} notes.</p>${rollSvg()}`:"<p class='m'>Press Compile.</p>")}
@@ -1715,7 +1727,7 @@ function t5(){const sel=st=>`<select data-i="i_${st}">${PRESETS.filter(p=>p.cate
  <div class="row">Drive ${rng("f_drive",0,1,f.drive,.05)} EQ low ${rng("f_lo",-12,12,f.lo,1)} EQ high ${rng("f_hi",-12,12,f.hi,1)} Lowpass ${rng("f_lp",500,20000,f.lp,100)}</div>
  <div class="row">Comp ${rng("f_comp",0,1,f.comp,.05)} Delay ${rng("f_delay",0,.6,f.delay,.05)} Reverb ${rng("f_rev",0,1,f.rev,.05)} Haas width ${rng("f_width",0,1,f.width,.05)} Tempo x ${rng("f_bm",.5,1.5,f.bm,.05)}</div>
  <div class="row">${btn("playsc","","Play","go")}${btn("stop","","Stop")}${btn("wav","","Export WAV")}${btn("midi","","Export MIDI")}</div>`}
-function t6(){return head(7,"Theory Library, Notes &amp; Change Log","Your complete reference text, a persistent notes pad, and the full engineering history through V16.")+
+function t6(){return head(7,"Theory Library, Notes &amp; Change Log","Your complete reference text, a persistent notes pad, and the full engineering history through V17.")+
  `<h3>Project</h3><p class="m">Progress, settings, grid, mixer, FX, score and notes autosave in this browser. Use Save project / Load project in the header for a portable JSON backup.
  Lifetime best streak: ${S.best}. Games won: rhythm ${S.stats.rhythm}, degree ${S.stats.degree}, cadence ${S.stats.cadence}. Renders: ${S.stats.renders}.</p>
  <h3>Notes</h3><textarea data-i="notes" placeholder="Your notes...">${esc(S.notes)}</textarea>
@@ -1757,8 +1769,8 @@ const A={
   hit=arr.findIndex(n=>n.m==m&&beat>=n.t&&beat<n.t+n.d);snap();if(hit>=0)arr.splice(hit,1);else{arr.push({m,t:beat,d:.5,v:.3});arr.sort((a,b)=>a.t-b.t);
   const c=ctx();voice(c,c.destination,spec(S.inst[S.ed]),c.currentTime,m,.4,.3)}render()},
  playsc(){const c=ctx();schedule(c,ensure(),S.fx,c.currentTime+.1);S.xp+=50;hud()},stop(){stopAll()},
- midi(){save(toMidi(ensure()),"varitheory-v16.mid")},
- async wav(){toast("Rendering WAV...",1);save(await toWav(ensure(),S.fx),"varitheory-v16.wav");S.stats.renders++;S.xp+=250;toast("WAV exported (+250 XP).",1);persist()},
+ midi(){save(toMidi(ensure()),"varitheory-v17.mid")},
+ async wav(){toast("Rendering WAV...",1);save(await toWav(ensure(),S.fx),"varitheory-v17.wav");S.stats.renders++;S.xp+=250;toast("WAV exported (+250 XP).",1);persist()},
  mute(k){S.mix[k].m=S.mix[k].m?0:1;render()},solo(k){S.mix[k].s=S.mix[k].s?0:1;render()}};
 const I={bpm(v){S.bpm=+v;S.score&&(S.score.bpm=+v);$("#bv").textContent=v;persist()},cut(v){S.cut=+v;$("#cv").textContent=v+" Hz"},att(v){S.att=+v;$("#av").textContent=Math.round(v*1e3)+" ms"},
  drums(v,el){S.drums=el.checked;persist()},notes(v){S.notes=v;persist()},
