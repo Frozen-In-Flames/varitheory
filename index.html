@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Theory Engine Studio V16</title>
+<title>VariTheory V16</title>
 <style>
 :root{--bg:#020617;--p:#0f172a;--b:#1e293b;--t:#e2e8f0;--m:#94a3b8;--c:#22d3ee;--a:#fbbf24;--r:#f43f5e;--g:#34d399}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px system-ui,sans-serif;padding:12px}
@@ -20,7 +20,7 @@ textarea{width:100%;min-height:90px}table{border-collapse:collapse;width:100%;fo
 .bar{height:8px;background:linear-gradient(90deg,#22d3ee,#fbbf24);border-radius:4px}pre{white-space:pre-wrap;font-size:11px;color:var(--m);max-height:420px;overflow:auto}
 .ref{max-height:520px;overflow:auto}.ref h3{color:var(--c)}.ref li{margin:3px 0}
 </style></head><body><div class="w">
-<header><div><h1>THEORY ENGINE STUDIO <span style="color:var(--a)">V16</span></h1><div class="m">Theory &rarr; Score &rarr; Song. Offline, zero dependencies, autosaved.</div></div>
+<header><div><h1>VARITHEORY <span style="color:var(--a)">V16</span></h1><div class="m">Theory &rarr; Score &rarr; Song. Offline, zero dependencies, autosaved.</div></div>
 <div class="row"><span>Lv <b id="lv" style="color:var(--g)">1</b></span><span>XP <b id="xp" style="color:var(--a)">0</b></span><span>Streak <b id="st" style="color:var(--c)">0</b></span>
 <button id="ping">&#128266;</button><button id="sv">Save project</button><label class="btn">Load project<input type="file" id="imp" accept=".json" hidden></label></div></header>
 <div id="toast"></div><nav id="nav"></nav><main id="main"></main></div>
@@ -1543,7 +1543,8 @@ const REF=[
 "THEORY ENGINE STUDIO V16 (this release)",
 "- Publication release: the Claude.ai-verified V15 build ships as a standalone public GitHub repository with GitHub Pages, so anyone can run it from a URL with no install.",
 "- Why: V15 existed only as local files and a PDF print copy; V16 gives the app a permanent public home without touching the verified theory engine, compiler, or exporters.",
-"- Version identifiers bumped to V16 (title, header, autosave key tes16, export filenames theory-engine-v16.mid / .wav, project state v:16). No functional code changes from V15."
+"- Version identifiers bumped to V16 (title, header, autosave key tes16, export filenames varitheory-v16.mid / .wav, project state v:16). No functional code changes from V15.",
+"- Public name: VariTheory. Variation governed by theory, which is the mechanism: a deterministic theory compiler whose lead can be mutated inside the scale. The name was cleared against existing music software, trademark records and domain registries before adoption."
 ];
 const $=s=>document.querySelector(s),PN=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const BASIC=[["lead","triangle"],["chords","sawtooth"],["bass","sine"]].map(([c,w])=>({id:"basic_"+c,name:"Basic oscillator ("+c+", v14 Lesson 5 voice)",category:c,waveform:w,
@@ -1756,8 +1757,8 @@ const A={
   hit=arr.findIndex(n=>n.m==m&&beat>=n.t&&beat<n.t+n.d);snap();if(hit>=0)arr.splice(hit,1);else{arr.push({m,t:beat,d:.5,v:.3});arr.sort((a,b)=>a.t-b.t);
   const c=ctx();voice(c,c.destination,spec(S.inst[S.ed]),c.currentTime,m,.4,.3)}render()},
  playsc(){const c=ctx();schedule(c,ensure(),S.fx,c.currentTime+.1);S.xp+=50;hud()},stop(){stopAll()},
- midi(){save(toMidi(ensure()),"theory-engine-v16.mid")},
- async wav(){toast("Rendering WAV...",1);save(await toWav(ensure(),S.fx),"theory-engine-v16.wav");S.stats.renders++;S.xp+=250;toast("WAV exported (+250 XP).",1);persist()},
+ midi(){save(toMidi(ensure()),"varitheory-v16.mid")},
+ async wav(){toast("Rendering WAV...",1);save(await toWav(ensure(),S.fx),"varitheory-v16.wav");S.stats.renders++;S.xp+=250;toast("WAV exported (+250 XP).",1);persist()},
  mute(k){S.mix[k].m=S.mix[k].m?0:1;render()},solo(k){S.mix[k].s=S.mix[k].s?0:1;render()}};
 const I={bpm(v){S.bpm=+v;S.score&&(S.score.bpm=+v);$("#bv").textContent=v;persist()},cut(v){S.cut=+v;$("#cv").textContent=v+" Hz"},att(v){S.att=+v;$("#av").textContent=Math.round(v*1e3)+" ms"},
  drums(v,el){S.drums=el.checked;persist()},notes(v){S.notes=v;persist()},
@@ -1774,6 +1775,6 @@ document.addEventListener("change",async e=>{const el=e.target;
 document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
  if(e.code=="Space"){e.preventDefault();S.tab==0?A.play():A.playsc()}if((e.ctrlKey||e.metaKey)&&e.key=="z"){e.preventDefault();e.shiftKey?A.redo():A.undo()}});
 $("#ping").onclick=()=>tone(ctx(),AC.destination,AC.currentTime,523.25,.2,"sine",.2);
-$("#sv").onclick=()=>{const o={};KEYS.forEach(k=>o[k]=S[k]);save(new Blob([JSON.stringify(o)],{type:"application/json"}),"theory-engine-project.json")};
+$("#sv").onclick=()=>{const o={};KEYS.forEach(k=>o[k]=S[k]);save(new Blob([JSON.stringify(o)],{type:"application/json"}),"varitheory-project.json")};
 render();
 </script></body></html>

@@ -1,14 +1,14 @@
-# Theory Engine Studio V16
+# VariTheory V16
 
 Gamified music theory lab + offline score compiler. Pure HTML/CSS/JS: no dependencies, no build step, no network calls.
 
-**Live demo:** https://frozen-in-flames.github.io/theory-engine-studio/
+**Live demo:** https://frozen-in-flames.github.io/varitheory/
 
 Run it by opening the live demo, or download `index.html` and open it in any browser. It works fully offline.
 
 ## What it does
 
-Theory Engine Studio teaches music theory by letting you build with it. Six lessons plus a library:
+VariTheory teaches music theory by letting you build with it. Six lessons plus a library:
 
 1. **Rhythm & Grid** — step sequencer with 4/4, 3/4, 5/4 and 7/8 meters, BPM control, and the Syncopation Pocket Challenge mini-game. The grid also feeds the drum stem in Lesson 5.
 2. **Pitch & Scales** — all 12 roots, six scale systems (Ionian, Aeolian, Harmonic Minor, Melodic Minor, Dorian, Phrygian Dominant) built from interval formulas, degree names and frequencies, and the Functional Degree Hunter mini-game.
@@ -30,7 +30,7 @@ V16 is the build that was exercised end to end in the Claude.ai demo environment
 
 ## Lineage
 
-Theory Engine Studio began as a React/TypeScript Space (v0 to v14) with a score-conditioned AI cover engine. V15 ported the exact v14 theory data into a zero-dependency single-file app and replaced the third-party AI cover with offline style presets. V16 is the publication release: the same verified engine, shipped as a public repository with GitHub Pages. The full history is in the app's Library & Log tab.
+VariTheory began as Theory Engine Studio, a React/TypeScript Space (v0 to v14) with a score-conditioned AI cover engine. V15 ported the exact v14 theory data into a zero-dependency single-file app and replaced the third-party AI cover with offline style presets. V16 is the publication release: the same verified engine, shipped as a public repository with GitHub Pages. The full history is in the app's Library & Log tab.
 
 ## License
 
