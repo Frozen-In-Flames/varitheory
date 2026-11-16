@@ -1,10 +1,12 @@
 # VariTheory V17
 
-Gamified music theory lab + offline score compiler. Pure HTML/CSS/JS: no dependencies, no build step, no network calls.
+A music theory laboratory and offline score compiler. Pure HTML, CSS, and JavaScript: no dependencies, no build step, and no network calls in operation.
 
-**Live demo:** https://frozen-in-flames.github.io/varitheory/
+## Live demonstration
 
-Run it by opening the live demo, or download `index.html` and open it in any browser. It works fully offline.
+- [VariTheory](https://frozen-in-flames.github.io/varitheory/): the full application, running in the browser.
+
+The application also runs fully offline: download `index.html` and open it in any browser.
 
 ## What it does
 
